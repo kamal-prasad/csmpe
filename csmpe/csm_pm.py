@@ -39,7 +39,7 @@ auto_pre_phases = ["Add", "Activate", "Deactivate"]
 
 class CSMPluginManager(object):
 
-    def __init__(self, ctx, invoke_on_load=True):
+    def __init__(self, ctx=None, invoke_on_load=True):
         self._ctx = ctx
         self._platform = ctx.family
         self._phase = ctx.phase

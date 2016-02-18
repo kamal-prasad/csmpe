@@ -105,9 +105,9 @@ def plugin_list(platform, phase, detail):
     ctx.requested_action = None
     ctx.log_directory = None
 
-    plugin_ctx = PluginContext(ctx)
+    #plugin_ctx = PluginContext(ctx)
 
-    pm = CSMPluginManager(plugin_ctx, invoke_on_load=False)
+    pm = CSMPluginManager(invoke_on_load=False)
     pm.set_phase_filter("Activate")
     pm.set_platform_filter("CRS")
 
