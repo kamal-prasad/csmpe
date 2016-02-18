@@ -51,7 +51,7 @@ def version():
 
 setup(
     name='csmpe',
-    version='1.0',
+    version=version(),
     description='CSM Plugin Engine',
     author='Klaudiusz Staniek',
     author_email='klstanie@cisco.com',

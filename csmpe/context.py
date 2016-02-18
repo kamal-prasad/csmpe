@@ -75,16 +75,20 @@ class Host(object):
                                      "active_cli", "inactive_cli", "committed_cli"))
 @delegate("_connection", ("connect", "disconnect", "send", "run_fsm"), ("family", "prompt", "os_type"))
 class PluginContext:
-    def __init__(self, csm):
+    def __init__(self, csm=None):
         self._csm = csm
-        self._connection = condoor.Connection(
-            self._csm.host.hostname,
-            self._csm.host_urls,
-            log_dir=self._csm.log_directory
-        )
         self.current_plugin = ""
-        self._set_logging(hostname=self._csm.hostname, log_dir=self._csm.log_directory, log_level=logging.DEBUG)
-        self._device_detect()
+        if csm is not None:
+            self._connection = condoor.Connection(
+                self._csm.host.hostname,
+                self._csm.host_urls,
+                log_dir=self._csm.log_directory
+            )
+            self._set_logging(hostname=self._csm.hostname, log_dir=self._csm.log_directory, log_level=logging.DEBUG)
+            self._device_detect()
+        else:
+            self._connection = None
+            self._set_logging()
 
     def _set_logging(self, hostname="host", log_dir=None, log_level=logging.NOTSET):
         self._logger = logging.getLogger("{}.plugin_manager".format(hostname))
@@ -122,7 +126,8 @@ class PluginContext:
         try:
             return self._csm.requested_action
         except AttributeError:
-            raise AssertionError("Requested action not provided")
+            pass
+            # raise AssertionError("Requested action not provided")
 
     def _device_detect(self):
         """Connect to device using condoor"""

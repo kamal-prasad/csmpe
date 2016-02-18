@@ -41,8 +41,15 @@ class CSMPluginManager(object):
 
     def __init__(self, ctx=None, invoke_on_load=True):
         self._ctx = ctx
-        self._platform = ctx.family
-        self._phase = ctx.phase
+        try:
+            self._platform = ctx.family
+        except AttributeError:
+            self._platform = None
+        try:
+            self._phase = ctx.phase
+        except AttributeError:
+            self._phase = None
+
         self._name = None
         self._manager = DispatchExtensionManager(
             "csm.plugin",
@@ -61,7 +68,8 @@ class CSMPluginManager(object):
         self.plugins = {}
         for ext in self._manager:
             self.plugins[ext.name] = {
-                'package_name': ext.entry_point.dist.project_name,
+                #  'package_name': ext.entry_point.dist.project_name,
+                'package_name': ext.entry_point.module_name.split(".")[0],
                 'name': ext.plugin.name,
                 'description': ext.plugin.__doc__,
                 'phases': ext.plugin.phases,
@@ -75,11 +83,15 @@ class CSMPluginManager(object):
             return False
         if self._name and ext.plugin.name not in self._name:
             return False
-
-        self._ctx.current_plugin = None
-        self._ctx.info("Dispatching: '{}'".format(ext.plugin.name))
-        self._ctx.current_plugin = ext.plugin.name
         return True
+
+    def _dispatch(self, ext):
+        if self._filter_func(ext):
+            self._ctx.current_plugin = None
+            self._ctx.info("Dispatching: '{}'".format(ext.plugin.name))
+            self._ctx.current_plugin = ext.plugin.name
+            return True
+        return False
 
     def _on_load_failure(self, manager, entry_point, exc):
         self._ctx.warning("Plugin load error: {}".format(entry_point))
@@ -91,7 +103,7 @@ class CSMPluginManager(object):
         for attribute in attributes:
             if not hasattr(plugin, attribute):
                 self._ctx.warning("Attribute '{}' missing in plugin class".format(attribute))
-        return True
+        return self._filter_func(ext)
 
     def _find_plugin_packages(self):
         packages = set()
@@ -119,7 +131,7 @@ class CSMPluginManager(object):
             current_phase = self._phase
             phase = "Pre-{}".format(self._phase)
             self.set_phase_filter(phase)
-            results = self._manager.map_method(self._filter_func, func)
+            results = self._manager.map_method(self._dispatch, func)
             self._ctx.current_plugin = None
             self.set_phase_filter(current_phase)
 

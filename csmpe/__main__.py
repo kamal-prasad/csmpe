@@ -36,40 +36,47 @@ except ImportError:
 from csmpe.csm_pm import CSMPluginManager
 from csmpe.context import InstallContext
 from csmpe.context import PluginContext
+from csmpe.csm_pm import install_phases
 
 
 import urlparse
+import textwrap
 import logging
 import os
 
-_PHASES = ["Pre-Upgrade", "Add", "Pre-Activate", "Activate", "Commit", "Deactivate", "Remove", "Post-Upgrade"]
 _PLATFORMS = ["ASR9K", "NCS6K", "CRS"]
 
 
-def print_plugin_info(pm, detail=False):
+def print_plugin_info(pm, detail=False, brief=False):
     for plugin, details in pm.plugins.items():
-        click.echo("=" * 60)
-        click.echo("Name: {}".format(details['name']))
-        click.echo("Platforms: {}".format(", ".join(details['platforms'])))
-        click.echo("Phases: {}".format(", ".join(details['phases'])))
-        click.echo("Description: {}\n".format(details['description']))
+        platforms = ", ".join(details['platforms'])
+        phases = ", ".join(details['phases'])
+        if brief:
+            click.echo("[{}] [{}] {}".format(platforms, phases, details['name']))
+        else:
+            click.echo("Name: {}".format(details['name']))
+            click.echo("Platforms: {}".format(platforms))
+            click.echo("Phases: {}".format(phases))
+            description = "Description: {}\n".format(details['description'])
+            description = "\n".join(textwrap.wrap(description, 60))
+            click.echo(description)
 
-        if detail:
-            package_name = details['package_name']
-            click.echo("  Package name: {}".format(package_name))
-            pkginfo = pm.get_package_metadata(package_name)
-            click.echo("  Summary: {}".format(pkginfo.summary))
-            click.echo("  Version: {}".format(pkginfo.version))
-            click.echo("  Author: {}".format(pkginfo.author))
-            click.echo("  Author Email: {}".format(pkginfo.author_email))
-        click.echo("=" * 60)
-        click.echo()
+            if detail:
+                click.echo("  UUID: {}".format(plugin))
+                package_name = details['package_name']
+                click.echo("  Package Name: {}".format(package_name))
+                pkginfo = pm.get_package_metadata(package_name)
+                click.echo("  Summary: {}".format(pkginfo.summary))
+                click.echo("  Version: {}".format(pkginfo.version))
+                click.echo("  Author: {}".format(pkginfo.author))
+                click.echo("  Author Email: {}".format(pkginfo.author_email))
+            click.echo()
 
 
 def validate_phase(ctx, param, value):
     if value:
-        if value.strip() not in _PHASES:
-            raise click.BadParameter("The supported plugin phases are: {}".format(", ".join(_PHASES)))
+        if value.strip() not in install_phases:
+            raise click.BadParameter("The supported plugin phases are: {}".format(", ".join(install_phases)))
     return value
 
 
@@ -94,30 +101,34 @@ def cli():
 @cli.command("list", help="List all the plugins available.", short_help="List plugins")
 @click.option("--platform", type=click.Choice(_PLATFORMS),
               help="Supported platform.")
-@click.option("--phase", type=click.Choice(_PHASES),
+@click.option("--phase", type=click.Choice(install_phases),
               help="Supported phase.")
 @click.option("--detail", is_flag=True,
-              help="Display detailed information about each plugin.")
-def plugin_list(platform, phase, detail):
+              help="Display detailed information about installed plugins.")
+@click.option("--brief", is_flag=True,
+              help="Display brief information about installed plugins.")
+def plugin_list(platform, phase, detail, brief):
     ctx = InstallContext()
     ctx.host.hostname = "Hostname"
     ctx.host_urls = []
     ctx.requested_action = None
     ctx.log_directory = None
 
-    #plugin_ctx = PluginContext(ctx)
+    plugin_ctx = PluginContext()
+    plugin_ctx.family = platform
+    plugin_ctx.phase = phase
 
-    pm = CSMPluginManager(invoke_on_load=False)
-    pm.set_phase_filter("Activate")
-    pm.set_platform_filter("CRS")
+    pm = CSMPluginManager(plugin_ctx, invoke_on_load=False)
+    pm.set_phase_filter(phase)
+    pm.set_platform_filter(platform)
 
+    click.echo("List of installed plugins:\n")
     if platform:
         click.echo("Plugins for platform: {}".format(platform))
     if phase:
         click.echo("Plugins for phase: {}".format(phase))
 
-    click.echo(pm.plugins)
-    print_plugin_info(pm, detail)
+    print_plugin_info(pm, detail, brief)
 
 
 @cli.command("run", help="Run specific plugin on the device.", short_help="Run plugin")
@@ -125,7 +136,7 @@ def plugin_list(platform, phase, detail):
               help='The connection url to the host (i.e. telnet://user:pass@hostname). '
                    'The --url option can be repeated to define multiple jumphost urls. '
                    'If no --url option provided the CSMPLUGIN_URLS environment variable is used.')
-@click.option("--phase", required=False, type=click.Choice(_PHASES),
+@click.option("--phase", required=False, type=click.Choice(install_phases),
               help="An install phase to run the plugin for.")
 @click.option("--cmd", multiple=True, default=[],
               help='The command to be passed to the plugin in ')
