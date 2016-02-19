@@ -29,6 +29,7 @@
 
 import pkginfo
 from stevedore.dispatch import DispatchExtensionManager
+from context import PluginContext
 
 
 install_phases = ['Pre-Upgrade', 'Pre-Add', 'Add', 'Pre-Activate', 'Activate', 'Pre-Deactivate',
@@ -40,7 +41,7 @@ auto_pre_phases = ["Add", "Activate", "Deactivate"]
 class CSMPluginManager(object):
 
     def __init__(self, ctx=None, invoke_on_load=True):
-        self._ctx = ctx
+        self._ctx = PluginContext(ctx)
         try:
             self._platform = ctx.family
         except AttributeError:
