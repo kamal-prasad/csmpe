@@ -130,4 +130,5 @@ class Plugin(CSMPlugin):
         if not self._can_create_dir("disk0:"):
             self.ctx.error("Can't create directory on 'disk0:'. Filesystem might be read only. Please contact TAC.")
 
+        self.ctx.info("Filesystem disk0: is writable.")
         return True

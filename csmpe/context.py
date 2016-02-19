@@ -71,7 +71,7 @@ class Host(object):
     pass
 
 
-@delegate("_csm", ("post_status",), ("operation_id", "server_repository_url", "software_packages",
+@delegate("_csm", ("post_status",), ("custom_commands", "success", "operation_id", "server_repository_url", "software_packages",
                                      "active_cli", "inactive_cli", "committed_cli"))
 @delegate("_connection", ("connect", "disconnect", "send", "run_fsm"), ("family", "prompt", "os_type"))
 class PluginContext:
@@ -117,9 +117,9 @@ class PluginContext:
     def CommandTimeoutError(self):
         return condoor.CommandTimeoutError
 
-    @property
-    def custom_commands(self):
-        return self._csm.custom_commands
+    # @property
+    # def custom_commands(self):
+    #     return self._csm.custom_commands
 
     @property
     def phase(self):
@@ -150,6 +150,7 @@ class PluginContext:
     def error(self, message):
         """Log ERROR message"""
         self._logger.error(self._format_log(message))
+        raise PluginError
         pass
 
     def warning(self, message):

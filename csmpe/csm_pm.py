@@ -138,7 +138,7 @@ class CSMPluginManager(object):
 
         results += self._manager.map_method(self._dispatch, func)
         self._ctx.current_plugin = None
-
+        self._ctx.success = True
         return results
 
     def set_platform_filter(self, platform):
