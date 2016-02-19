@@ -133,7 +133,8 @@ class PluginContext(object):
     def _device_detect(self):
         """Connect to device using condoor"""
         self.info("Phase: Device Discovery")
-        self._connection.discovery()
+        self.post_status("Device Discovery")
+        self.discovery()
         self.info("Hostname: {}".format(self._connection.hostname))
         self.info("Hardware family: {}".format(self._connection.family))
         self.info("Hardware platform: {}".format(self._connection.platform))
