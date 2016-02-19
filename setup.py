@@ -56,7 +56,7 @@ setup(
     description='CSM Plugin Engine',
     author='Klaudiusz Staniek',
     author_email='klstanie@cisco.com',
-    url='',
+    url='https://github.com/csmserver/csmpe',
     packages=find_packages(),
     include_package_data=True,
     entry_points={
