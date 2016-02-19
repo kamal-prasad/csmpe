@@ -152,6 +152,7 @@ def plugin_run(url, phase, cmd, log_dir, package, repository_url, plugin_name):
     ctx = InstallContext()
     ctx.host.hostname = "Hostname"
     ctx.host_urls = list(url)
+    ctx.success = False
 
     ctx.requested_action = phase
     ctx.log_directory = log_dir
@@ -180,6 +181,9 @@ def plugin_run(url, phase, cmd, log_dir, package, repository_url, plugin_name):
     pm.set_name_filter(plugin_name)
 
     print(pm.dispatch("run"))
+
+    print ctx.success
+    print ctx.host_urls
 
     click.echo("\n Plugin execution finished.\n")
     click.echo("Log files dir: {}".format(log_dir))

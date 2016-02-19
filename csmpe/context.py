@@ -71,10 +71,11 @@ class Host(object):
     pass
 
 
-@delegate("_csm", ("post_status",), ("custom_commands", "success", "operation_id", "server_repository_url", "software_packages",
-                                     "active_cli", "inactive_cli", "committed_cli"))
-@delegate("_connection", ("connect", "disconnect", "send", "run_fsm"), ("family", "prompt", "os_type"))
-class PluginContext:
+@delegate("_csm", ("post_status",), ("custom_commands", "success", "operation_id", "server_repository_url",
+                                     "software_packages", "active_cli", "inactive_cli", "committed_cli"))
+@delegate("_connection", ("connect", "disconnect", "reconnect", "discovery", "send", "run_fsm"),
+          ("family", "prompt", "os_type"))
+class PluginContext(object):
     def __init__(self, csm=None):
         self._csm = csm
         self.current_plugin = ""

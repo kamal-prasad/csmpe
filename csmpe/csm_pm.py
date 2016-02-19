@@ -29,6 +29,9 @@
 
 import pkginfo
 from stevedore.dispatch import DispatchExtensionManager
+from stevedore.exception import NoMatches
+from condoor import ConnectionError
+
 from context import PluginContext
 
 
@@ -78,6 +81,7 @@ class CSMPluginManager(object):
             }
 
     def _filter_func(self, ext, *args, **kwargs):
+        print(ext.plugin.name)
         if self._platform and self._platform not in ext.plugin.platforms:
             return False
         if self._phase and self._phase not in ext.plugin.phases:
@@ -125,18 +129,31 @@ class CSMPluginManager(object):
         return self.get_package_metadata().keys()
 
     def dispatch(self, func):
-        self._ctx.connect()
+        try:
+            self._ctx.connect()
+        except ConnectionError as e:
+            self._ctx.post_status(e.message)
+            self._ctx.error(e.message)
+            return False
 
         results = []
         if self._phase in auto_pre_phases:
             current_phase = self._phase
             phase = "Pre-{}".format(self._phase)
             self.set_phase_filter(phase)
-            results = self._manager.map_method(self._dispatch, func)
+            try:
+                results = self._manager.map_method(self._dispatch, func)
+            except NoMatches:
+                self._ctx.warning("No {} plugins found".format(phase))
             self._ctx.current_plugin = None
             self.set_phase_filter(current_phase)
 
-        results += self._manager.map_method(self._dispatch, func)
+        try:
+            results += self._manager.map_method(self._dispatch, func)
+        except NoMatches:
+            self._ctx.post_status("No plugins found for phase {}".format(self._phase))
+            self._ctx.error("No plugins found for phase {}".format(self._phase))
+
         self._ctx.current_plugin = None
         self._ctx.success = True
         return results

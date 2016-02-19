@@ -1,5 +1,4 @@
 # =============================================================================
-# delegators
 #
 # Copyright (c) 2016, Cisco Systems
 # All rights reserved.
@@ -27,36 +26,53 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-from functools import partial
+from unittest import TestCase, skip, skipIf
+
+from csmpe.decorators import delegate
 
 
-def delegate(attribute_name, method_names, attribute_names=()):
-    """Passes the call to the attribute called attribute_name for
-    every method listed in method_names.
-    """
-    # hack for python 2.7 as nonlocal is not available
-    d = {
-        'delegate': attribute_name,
-        'methods': method_names,
-        'attributes': attribute_names,
-    }
+class Delegate():
+    def __init__(self):
+        self.attr1 = 1
+        self.attr2 = 2
 
-    def setter(attribute, name, instance, value):
-        setattr(getattr(instance, attribute), name, value)
+    def method1(self):
+        return self.attr1
 
-    def getter(attribute, name, instance):
-        return getattr(getattr(instance, attribute), name)
+    def method2(self):
+        return self.attr2
 
-    def caller(attribute, name):
-        return lambda self, *args, **kwargs: getter(attribute, name, self)(*args, **kwargs)
+    def method3(self, arg1, arg2=None):
+        return arg1, arg2
 
-    def decorator(cls):
-        delegate_name = d['delegate']
-        if delegate_name.startswith("__"):
-            delegate_name = "_" + cls.__name__ + delegate_name
-        for name in d['methods']:
-            setattr(cls, name, caller(delegate_name, name))
-        for name in d['attributes']:
-            setattr(cls, name, property(partial(getter, delegate_name, name), partial(setter, delegate_name, name)))
-        return cls
-    return decorator
+@delegate("delegate", ("method1", "method2", "method3"), ("attr1", "attr2",))
+class DelegateTest(object):
+    def __init__(self):
+        self.delegate = Delegate()
+
+
+class TestDelegateDecorator(TestCase):
+    def test_method_delegate(self):
+        dc = DelegateTest()
+
+        self.assertEqual(dc.attr1, 1)
+        self.assertEqual(dc.attr2, 2)
+        self.assertEqual(dc.method1(), 1)
+        self.assertEqual(dc.method2(), 2)
+
+        dc.attr1 = 10
+        dc.attr2 = 20
+
+        self.assertEqual(dc.attr1, 10)
+        self.assertEqual(dc.attr2, 20)
+
+        self.assertEqual(dc.attr1, dc.delegate.attr1)
+        self.assertEqual(dc.attr2, dc.delegate.attr2)
+
+        self.assertEqual(dc.method3("10", arg2=20), ("10", 20))
+
+
+
+
+
+
