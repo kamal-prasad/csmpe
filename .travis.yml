@@ -1,11 +1,10 @@
 language: python
 install:
 - pip install tox
+
 script:
 - tox
-env:
-- TOXENV=py27
-- TOXENV=pep8
+
 deploy:
   provider: pypi
   user: kstaniek
