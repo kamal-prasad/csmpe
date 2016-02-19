@@ -1,8 +1,17 @@
 language: python
 install:
-    - pip install tox
+- pip install tox
 script:
-    - tox
+- tox
 env:
-    - TOXENV=py27
-    - TOXENV=pep8
+- TOXENV=py27
+- TOXENV=pep8
+deploy:
+  provider: pypi
+  user: kstaniek
+  password:
+    secure: 1rYThQms0bVCCuZG/qytJodwBGMN8DuncCXYw6OzNPbmH4WWyiapoNyLfvn0Y7K8zPhOQP530s3eEa/RFl1b4sy93on43dD7R0kG0ssK937QHprrCgjQTN48fGWrr8uV6bVoWGOgwlx2sm1HQeAIGq1enJxeH5IIduIQZn9FYZ12y7fCunCb0fxiuuGwpevhhI/aWRPhxLEnJ4oT5zOnwwVcSnK3szoiFTAWxIp9gqBY/NnjyKSfs+zHzLj5N2LuiulQbLeCeWjUq4uQg2DjQPkh+hip1kvX/jeLJaYuCxuAojiCStR0i9ye/1SKB8iJVHbMdBwVOnYZa58Rx/rN8MaSuTi4yj6AAPSBoff5IOQoCfrPXSB+Z27KZOhScQZDsTc+H3sBwhqGl2xjKcQrzGfoSJUZ3tgJFR609aPMcgkVfl2w5fEBY9zeELEWSwnznj+6HMJ76hH+hz/Fj9JjxPziWg27qYJ114Dz99tjZCCK/no8a6oLKzl2qVBGft7Qn9R4kIXd+nqr3sFCIIKdT73Pqhj1m8a/TUdQVoyR7V5qlGX7M7haPTlCE16qjcPboGRWspz7btI4YMuVOHdpXVHZL8K/scz7eHHYMfuALGUb1UqrnEJT0++wkQfWqhDXZJIpbI/Lo3DTT3dm1Rc81SFacSFqdwALv3qI5M1c7dw=
+  on:
+    tags: true
+    distributions: sdist bdist_wheel
+    repo: csmserver/csmpe
