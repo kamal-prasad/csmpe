@@ -43,11 +43,11 @@ class CSMPluginManager(object):
     def __init__(self, ctx=None, invoke_on_load=True):
         self._ctx = PluginContext(ctx)
         try:
-            self._platform = ctx.family
+            self._platform = self._ctx.family
         except AttributeError:
             self._platform = None
         try:
-            self._phase = ctx.phase
+            self._phase = self._ctx.phase
         except AttributeError:
             self._phase = None
 
@@ -56,7 +56,7 @@ class CSMPluginManager(object):
             "csm.plugin",
             self._check_plugin,
             invoke_on_load=invoke_on_load,
-            invoke_args=(ctx,),
+            invoke_args=(self._ctx,),
             propagate_map_exceptions=True,
             on_load_failure_callback=self._on_load_failure,
         )

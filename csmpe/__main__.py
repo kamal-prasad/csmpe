@@ -174,7 +174,7 @@ def plugin_run(url, phase, cmd, log_dir, package, repository_url, plugin_name):
         ctx.custom_commands = list(cmd)
 
     #  FIXME: temp
-    #plugin_ctx = PluginContext(ctx)
+    #  plugin_ctx = PluginContext(ctx)
 
     pm = CSMPluginManager(ctx)
     pm.set_name_filter(plugin_name)

@@ -36,6 +36,7 @@ install_requires = [
     "stevedore",
     "pkginfo",
     "click",
+    "condoor",
 ]
 
 
