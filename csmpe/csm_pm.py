@@ -86,7 +86,7 @@ class CSMPluginManager(object):
             return False
         return True
 
-    def _dispatch(self, ext):
+    def _dispatch(self, ext, *args, **kwargs):
         if self._filter_func(ext):
             self._ctx.current_plugin = None
             self._ctx.info("Dispatching: '{}'".format(ext.plugin.name))
@@ -136,7 +136,7 @@ class CSMPluginManager(object):
             self._ctx.current_plugin = None
             self.set_phase_filter(current_phase)
 
-        results += self._manager.map_method(self._filter_func, func)
+        results += self._manager.map_method(self._dispatch, func)
         self._ctx.current_plugin = None
 
         return results

@@ -39,7 +39,7 @@ class Plugin(CSMPlugin):
         command_list = self.ctx.custom_commands
         if command_list:
             for cmd in command_list:
-                self.ctx.log("Capturing output of '{}'".format(cmd))
+                self.ctx.info("Capturing output of '{}'".format(cmd))
                 output = self.ctx.send(cmd, timeout=2200)
                 file_name = self.ctx.save_to_file(cmd, output)
                 if file_name is None:
