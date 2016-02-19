@@ -90,6 +90,6 @@ setup(
     ],
     zip_safe=False,
     install_requires=install_requires,
-    tests_requires=['nose', 'flake8'],
+    tests_require=['flake8'],
     package_data={'': ['LICENSE', ], },
 )
