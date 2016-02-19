@@ -134,6 +134,7 @@ class CSMPluginManager(object):
             current_phase = self._phase
             phase = "Pre-{}".format(self._phase)
             self.set_phase_filter(phase)
+            self._ctx.info("Phase: {}".format(self._phase))
             try:
                 results = self._manager.map_method(self._dispatch, func)
             except NoMatches:
@@ -141,6 +142,7 @@ class CSMPluginManager(object):
             self._ctx.current_plugin = None
             self.set_phase_filter(current_phase)
 
+        self._ctx.info("Phase: {}".format(self._phase))
         try:
             results += self._manager.map_method(self._dispatch, func)
         except NoMatches:
@@ -155,7 +157,6 @@ class CSMPluginManager(object):
         self._platform = platform
 
     def set_phase_filter(self, phase):
-        self._ctx.info("Phase: {}".format(phase))
         self._phase = phase
 
     def set_name_filter(self, name):
