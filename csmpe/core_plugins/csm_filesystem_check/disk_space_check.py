@@ -50,7 +50,6 @@ class Plugin(CSMPlugin):
                     self.ctx.error(output)
 
     def run(self):
-        print(dir(self.ctx))
         try:
             packages = self.ctx.software_packages
         except AttributeError:

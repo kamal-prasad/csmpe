@@ -65,8 +65,6 @@ class Plugin(CSMPlugin):
         command = "rmdir {}".format(directory)
         PROMPT = self.ctx.prompt
         TIMEOUT = self.ctx.TIMEOUT
-        print(PROMPT)
-        print(TIMEOUT)
 
         events = [PROMPT, REMOVE_DIR, DELETE_CONFIRM, REMOVE_ERROR, TIMEOUT]
         transitions = [

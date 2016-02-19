@@ -29,4 +29,4 @@
 
 
 from csmpe.plugins.base import CSMPlugin  # NOQA
-from csmpe.plugins.api import file_name_from_cmd  # NOQA
+#  from csmpe.plugins.api import file_name_from_cmd  # NOQA

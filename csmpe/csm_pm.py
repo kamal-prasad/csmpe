@@ -81,7 +81,6 @@ class CSMPluginManager(object):
             }
 
     def _filter_func(self, ext, *args, **kwargs):
-        print(ext.plugin.name)
         if self._platform and self._platform not in ext.plugin.platforms:
             return False
         if self._phase and self._phase not in ext.plugin.phases:
@@ -94,6 +93,7 @@ class CSMPluginManager(object):
         if self._filter_func(ext):
             self._ctx.current_plugin = None
             self._ctx.info("Dispatching: '{}'".format(ext.plugin.name))
+            self._ctx.post_status(ext.plugin.name)
             self._ctx.current_plugin = ext.plugin.name
             return True
         return False
@@ -109,13 +109,6 @@ class CSMPluginManager(object):
             if not hasattr(plugin, attribute):
                 self._ctx.warning("Attribute '{}' missing in plugin class".format(attribute))
         return self._filter_func(ext)
-
-    def _find_plugin_packages(self):
-        packages = set()
-        for ext in self._manager:
-            dist = ext.entry_point.dist
-            print(dist.__dict__)
-        return list(packages)
 
     def get_package_metadata(self, name):
         try:
