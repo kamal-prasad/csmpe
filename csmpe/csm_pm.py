@@ -28,12 +28,11 @@
 # =============================================================================
 
 import pkginfo
+from condoor import ConnectionError
 from stevedore.dispatch import DispatchExtensionManager
 from stevedore.exception import NoMatches
-from condoor import ConnectionError
 
 from context import PluginContext
-
 
 install_phases = ['Pre-Upgrade', 'Pre-Add', 'Add', 'Pre-Activate', 'Activate', 'Pre-Deactivate',
                   'Deactivate', 'Pre-Remove', 'Remove', 'Commit']
@@ -118,7 +117,7 @@ class CSMPluginManager(object):
             return None
         return meta
 
-    def get_package_names(self):
+    def _get_package_names(self):
         return self.get_package_metadata().keys()
 
     def dispatch(self, func):
@@ -161,7 +160,7 @@ class CSMPluginManager(object):
 
     def set_name_filter(self, name):
         if isinstance(name, str) or isinstance(name, unicode):
-            self._name = set((name,))
+            self._name = {name}
         elif isinstance(name, list):
             self._name = set(name)
         elif isinstance(name, set):

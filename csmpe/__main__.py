@@ -33,16 +33,15 @@ except ImportError:
     print("Install click python package\n pip install click")
     exit()
 
-from csmpe.csm_pm import CSMPluginManager
-from csmpe.context import InstallContext
-from csmpe.context import PluginContext
-from csmpe.csm_pm import install_phases
-
-
-import urlparse
-import textwrap
 import logging
 import os
+import textwrap
+import urlparse
+
+from csmpe.context import InstallContext
+from csmpe.context import PluginContext
+from csmpe.csm_pm import CSMPluginManager
+from csmpe.csm_pm import install_phases
 
 _PLATFORMS = ["ASR9K", "NCS6K", "CRS"]
 

@@ -26,9 +26,9 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
+from asr9k_package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
 from install import install_activate_deactivate, get_package
-from asr9k_package_lib import SoftwarePackage
 
 
 class Plugin(CSMPlugin):

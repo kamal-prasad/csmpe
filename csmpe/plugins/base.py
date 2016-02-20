@@ -27,6 +27,7 @@
 # =============================================================================
 
 import abc
+
 import six
 
 
@@ -41,7 +42,7 @@ class CSMPlugin(object):
         self.ctx = ctx
 
     @abc.abstractmethod
-    def run():
+    def run(self):
         """
         Method used to start plugin. Must be implemented
         """

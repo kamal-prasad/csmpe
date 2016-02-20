@@ -27,13 +27,13 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
+import logging
 import os
 import re
-import logging
-
 from time import time
 
 import condoor
+
 from decorators import delegate
 
 
@@ -64,7 +64,8 @@ class InstallContext(object):
 
     @property
     def custom_commands(self):
-        return ["show isis neighbor", "show ospf neighbor", "show bgp summary", "show install inactive summary", "show install active summary"]
+        return ["show isis neighbor", "show ospf neighbor", "show bgp summary", "show install inactive summary",
+                "show install active summary"]
 
 
 class Host(object):

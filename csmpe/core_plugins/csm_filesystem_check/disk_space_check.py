@@ -28,6 +28,7 @@
 
 
 import os
+
 from csmpe.plugins import CSMPlugin
 from utils import get_filesystems
 
@@ -72,6 +73,7 @@ class Plugin(CSMPlugin):
             disk0_free = disk0.get('free', 0)
         else:
             self.ctx.error("No filesystem 'disk0:' on active RP.")
+            return
 
         total_size = 0
         for package in packages:

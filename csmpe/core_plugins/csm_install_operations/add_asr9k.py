@@ -60,5 +60,5 @@ class Plugin(CSMPlugin):
         self.ctx.info("Add Package(s) Pending")
         self.ctx.post_status("Add Package(s) Pending")
         install_add_remove(self.ctx, cmd, has_tar=has_tar)
-        get_package()
+        get_package(self.ctx)
         self.ctx.info("Package(s) Added Successfully")

@@ -28,6 +28,7 @@
 
 
 import re
+
 from csmpe.plugins import CSMPlugin
 from install import watch_operation, log_install_errors, get_package
 
@@ -54,7 +55,7 @@ class Plugin(CSMPlugin):
             op_id = result.group(1)
             watch_operation(self.ctx, op_id)
         else:
-            log_install_errors(self.output)
+            log_install_errors(self.ctx, output)
             self.ctx.error("Operation ID not found.")
             return
 

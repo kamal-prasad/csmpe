@@ -26,10 +26,9 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-import re
 import itertools
+import re
 import time
-
 
 install_error_pattern = re.compile("Error:    (.*)$", re.MULTILINE)
 
