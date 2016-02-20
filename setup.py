@@ -82,7 +82,7 @@ setup(
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: MIT License',
+        'License :: OSI Approved :: Apache 2.0',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Topic :: Software Development :: Libraries',
