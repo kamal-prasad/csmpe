@@ -53,7 +53,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'CSM Pugin Engine'
+project = u'CSM Plugin Engine'
 copyright = u'2016, Klaudiusz Staniek'
 author = u'Klaudiusz Staniek'
 
