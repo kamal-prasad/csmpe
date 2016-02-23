@@ -33,16 +33,37 @@ import six
 
 @six.add_metaclass(abc.ABCMeta)
 class CSMPlugin(object):
-    """This a plugin template"""
+    """This is a base class for all plugins. Inheriting from this class is not mandatory,
+    however the Plugin class must implement the `run` method.
+    The the object constructor must accept single parameter which represents
+    the :class:`csmpe.InstallContext` object
+
+    :param ctx: :class:`csmpe.InstallContext` object
+
+    The Plugin class must also have the folowing attributes.
+    """
+    #: The string representing the name of the plugin.
     name = "Plugin Template"
-    platforms = {'ASR9K'}
-    phases = {'Remove'}
-    os = {}
+
+    #: The set of string representing the phases when the plugin is being executed.
+    #: Empty set means that plugin will never be executed. The currently supported values are:
+    #: 'Pre-Upgrade', 'Pre-Add', 'Add', 'Pre-Activate', 'Pre-Deactivate', 'Deactivate',
+    #: 'Remove', 'Commit'
+    phases = {()}
+
+    #: The set of strings representing the supported platforms. Empty set means ANY platform.
+    #: The currently supported values are: 'ASR9K', 'CRS', 'NCS6K'
+    platforms = {()}
+
+    #: The set of os type strings. The supported values are: 'IOS', 'XR', 'eXR', 'XE'.
+    #: Empty set means plugin will be executed regardless of detected os type).
+    os = {()}
 
     def __init__(self, ctx):
         """ This is a constructor of a plugin object. The constructor can be overridden by the plugin code.
         The CSM Plugin Engine passes the :class:`csmpe.InstallContext` object
-        as an argument. This context object provides the API mechanism for the plugin for:
+        as an argument. This context object provides the API interface for the plugin including:
+
         - Device communication (using condoor)
         - CSM status and information update
         - Progress, error and status logging.

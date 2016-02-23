@@ -37,6 +37,7 @@ install_requires = [
     "pkginfo",
     "click",
     "condoor",
+    "sphinx",
 ]
 
 

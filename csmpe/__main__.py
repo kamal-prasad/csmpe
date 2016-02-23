@@ -39,7 +39,6 @@ import textwrap
 import urlparse
 
 from csmpe.context import InstallContext
-from csmpe.context import PluginContext
 from csmpe.csm_pm import CSMPluginManager
 from csmpe.csm_pm import install_phases
 
