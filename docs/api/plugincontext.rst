@@ -7,4 +7,5 @@ PluginContext Class
 -------------------
 
 .. autoclass:: PluginContext
+
    :members: __init__
