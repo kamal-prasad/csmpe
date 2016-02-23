@@ -17,8 +17,7 @@ CSMPlugin Class
 ---------------
 
 .. autoclass:: CSMPlugin
-
-    :members: __init__, run, platforms
+    :members: __init__, run
 
     .. autoattribute:: name
     .. autoattribute:: phases

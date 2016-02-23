@@ -35,7 +35,7 @@ import six
 class CSMPlugin(object):
     """This is a base class for all plugins. Inheriting from this class is not mandatory,
     however the Plugin class must implement the `run` method.
-    The the object constructor must accept single parameter which represents
+    The object constructor must accept a single parameter which represents
     the :class:`csmpe.InstallContext` object
 
     :param ctx: :class:`csmpe.InstallContext` object
