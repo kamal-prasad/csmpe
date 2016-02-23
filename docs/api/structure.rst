@@ -10,7 +10,7 @@ and have minimum four attributes:
  - platforms
  - os
 
-.. automodule:: csmpe.plugins.base
+.. automodule:: csmpe
 
 .. autoclass:: CSMPlugin
     :members: __init__, run, platforms
