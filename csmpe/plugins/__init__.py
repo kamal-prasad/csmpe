@@ -27,4 +27,4 @@
 # =============================================================================
 
 
-from csmpe.plugins.base import CSMPlugin  # NOQA
+from base import CSMPlugin  # NOQA
