@@ -45,6 +45,9 @@ def delegate(attribute_name, method_names, attribute_names=()):
         setattr(getattr(instance, attribute), name, value)
 
     def getter(attribute, name, instance):
+        print(instance)
+        print(attribute)
+        print(name)
         return getattr(getattr(instance, attribute), name)
 
     def caller(attribute, name):

@@ -107,17 +107,7 @@ def cli():
 @click.option("--brief", is_flag=True,
               help="Display brief information about installed plugins.")
 def plugin_list(platform, phase, detail, brief):
-    ctx = InstallContext()
-    ctx.host.hostname = "Hostname"
-    ctx.host_urls = []
-    ctx.requested_action = None
-    ctx.log_directory = None
-
-    plugin_ctx = PluginContext()
-    plugin_ctx.family = platform
-    plugin_ctx.phase = phase
-
-    pm = CSMPluginManager(plugin_ctx, invoke_on_load=False)
+    pm = CSMPluginManager(None, invoke_on_load=False)
     pm.set_phase_filter(phase)
     pm.set_platform_filter(platform)
 
@@ -149,7 +139,7 @@ def plugin_list(platform, phase, detail, brief):
 def plugin_run(url, phase, cmd, log_dir, package, repository_url, plugin_name):
 
     ctx = InstallContext()
-    ctx.host.hostname = "Hostname"
+    ctx.hostname = "Hostname"
     ctx.host_urls = list(url)
     ctx.success = False
 
@@ -173,12 +163,8 @@ def plugin_run(url, phase, cmd, log_dir, package, repository_url, plugin_name):
     if cmd:
         ctx.custom_commands = list(cmd)
 
-    #  FIXME: temp
-    #  plugin_ctx = PluginContext(ctx)
-
     pm = CSMPluginManager(ctx)
     pm.set_name_filter(plugin_name)
-
     results = pm.dispatch("run")
 
     click.echo("\n Plugin execution finished.\n")

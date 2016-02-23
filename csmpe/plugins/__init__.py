@@ -1,7 +1,6 @@
 # =============================================================================
-# __init__
 #
-# Copyright (c)  2016, Cisco Systems
+# Copyright (c) 2016, Cisco Systems
 # All rights reserved.
 #
 # # Author: Klaudiusz Staniek
@@ -29,4 +28,3 @@
 
 
 from csmpe.plugins.base import CSMPlugin  # NOQA
-#  from csmpe.plugins.api import file_name_from_cmd  # NOQA

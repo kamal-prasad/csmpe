@@ -45,11 +45,7 @@ class InstallContext(object):
     _storage = {}
 
     def __init__(self):
-        self.host = Host()
-
-    @property
-    def hostname(self):
-        return "Hostname"
+        self.hostname = "Hostname"
 
     def post_status(self, message):
         print("[CSM Status] {}".format(message))
@@ -73,16 +69,18 @@ class Host(object):
 
 
 @delegate("_csm", ("post_status",), ("custom_commands", "success", "operation_id", "server_repository_url",
-                                     "software_packages", "active_cli", "inactive_cli", "committed_cli"))
+                                     "software_packages", "active_cli", "inactive_cli", "committed_cli", "hostname"))
 @delegate("_connection", ("connect", "disconnect", "reconnect", "discovery", "send", "run_fsm"),
           ("family", "prompt", "os_type"))
 class PluginContext(object):
     def __init__(self, csm=None):
         self._csm = csm
         self.current_plugin = ""
+        print("CSM")
+        print(csm)
         if csm is not None:
             self._connection = condoor.Connection(
-                self._csm.host.hostname,
+                self._csm.hostname,
                 self._csm.host_urls,
                 log_dir=self._csm.log_directory
             )

@@ -37,12 +37,27 @@ class CSMPlugin(object):
     name = "Plugin Template"
     platforms = {'ASR9K'}
     phases = {'Remove'}
+    os = {}
 
     def __init__(self, ctx):
+        """ This is a constructor of a plugin object. The constructor can be overridden by the plugin code.
+        The CSM Plugin Engine passes the :class:`csmpe.InstallContext` object
+        as an argument. This context object provides the API mechanism for the plugin for:
+        - Device communication (using condoor)
+        - CSM status and information update
+        - Progress, error and status logging.
+
+        :param ctx: The install context object :class:`csmpe.InstallContext`
+        :return: None
+        """
         self.ctx = ctx
 
     @abc.abstractmethod
     def run(self):
         """
-        Method used to start plugin. Must be implemented
+        Method is invoked when the plugin is dispatched by Plugin Engine.
+        Must be implemented by the plugin code.
+
+        :param: None
+        :return: None
         """
