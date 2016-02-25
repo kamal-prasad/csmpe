@@ -73,6 +73,9 @@ class Host(object):
 @delegate("_connection", ("connect", "disconnect", "reconnect", "discovery", "send", "run_fsm"),
           ("family", "prompt", "os_type"))
 class PluginContext(object):
+    """ This is a class passed to the constructor during plugin instantiation.
+    Thi class provides the API for the plugins to allow the communication with the CMS Server and device.
+    """
     def __init__(self, csm=None):
         self._csm = csm
         self.current_plugin = ""
@@ -117,12 +120,11 @@ class PluginContext(object):
     def CommandTimeoutError(self):
         return condoor.CommandTimeoutError
 
-    # @property
-    # def custom_commands(self):
-    #     return self._csm.custom_commands
-
     @property
     def phase(self):
+        """
+        :return: string representing the installation phase.
+        """
         try:
             return self._csm.requested_action
         except AttributeError:

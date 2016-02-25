@@ -36,27 +36,25 @@ class CSMPlugin(object):
     """This is a base class for all plugins. Inheriting from this class is not mandatory,
     however the Plugin class must implement the `run` method.
     The object constructor must accept a single parameter which represents
-    the :class:`csmpe.InstallContext` object
+    the :class:`csmpe.InstallContext` object.
 
-    :param ctx: :class:`csmpe.InstallContext` object
-
-    The Plugin class must also have the folowing attributes.
+    The Plugin class must also have the following attributes.
     """
     #: The string representing the name of the plugin.
     name = "Plugin Template"
 
-    #: The set of string representing the phases when the plugin is being executed.
-    #: Empty set means that plugin will never be executed. The currently supported values are:
+    #: The set of strings representing the install phases during which the plugin will be dispatched.
+    #: Empty set means that plugin will NEVER be executed. The currently supported values are:
     #: 'Pre-Upgrade', 'Pre-Add', 'Add', 'Pre-Activate', 'Pre-Deactivate', 'Deactivate',
     #: 'Remove', 'Commit'
     phases = {()}
 
-    #: The set of strings representing the supported platforms. Empty set means ANY platform.
-    #: The currently supported values are: 'ASR9K', 'CRS', 'NCS6K'
+    #: The set of strings representing the supported platforms by the plugin. Empty set means ANY platform.
+    #: The currently supported values are: *ASR9K*, 'CRS', 'NCS6K'
     platforms = {()}
 
-    #: The set of os type strings. The supported values are: 'IOS', 'XR', 'eXR', 'XE'.
-    #: Empty set means plugin will be executed regardless of detected os type).
+    #: The set of operating system type strings. The supported values are: 'IOS', 'IOS XR', 'IOS XR 64 bit', 'IOS XE'.
+    #: Empty set means plugin will be executed regardless of the detected operating system.
     os = {()}
 
     def __init__(self, ctx):
@@ -76,7 +74,7 @@ class CSMPlugin(object):
     @abc.abstractmethod
     def run(self):
         """
-        Method is invoked when the plugin is dispatched by Plugin Engine.
+        This method is a entry point for Plugin Engine to be called when plugin is dispatched.
         Must be implemented by the plugin code.
 
         :param: None
