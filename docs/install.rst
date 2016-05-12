@@ -3,14 +3,14 @@ Installation
 
 CSM Plugin Engine has been published on PyPI, and can be installed with standard tools::
 
-    pip install condoor
+    pip install csmpe
 
 Or::
 
-    easy_install condoor
+    easy_install csmpe
 
 If the CSM Plugin Engine is installed on the CSM Server then CSM Server uses this module
-for plugin dispaching na execution.
+for plugin dispatching na execution.
 
 Requirements
 ------------

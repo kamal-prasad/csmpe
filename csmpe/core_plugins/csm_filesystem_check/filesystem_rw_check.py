@@ -57,7 +57,10 @@ class Plugin(CSMPlugin):
 
         REMOVE_DIR = re.compile(re.escape("Remove directory filename [{}]?".format(test_dir)))
         DELETE_CONFIRM = re.compile(re.escape("Delete {}/{}[confirm]".format(filesystem, test_dir)))
+        # TODO(klstnaie): this plugin is IOX XR specific. Must be fixed
+        # IOS XR specific - does not cover the eXR
         REMOVE_ERROR = re.compile(re.escape("%Error Removing dir {} (Directory doesnot exist)".format(test_dir)))
+
         CREATE_DIR = re.compile(re.escape("Create directory filename [{}]?".format(test_dir)))
         CREATED_DIR = re.compile(re.escape("Created dir {}/{}".format(filesystem, test_dir)))
         READONLY = re.compile(re.escape("%Error Creating Directory {}/{} (Read-only file system)".format(

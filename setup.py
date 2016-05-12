@@ -38,6 +38,7 @@ install_requires = [
     "click",
     "condoor",
     "sphinx",
+    "sphinx_rtd_theme",
 ]
 
 

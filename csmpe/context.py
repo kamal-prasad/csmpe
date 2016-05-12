@@ -79,8 +79,6 @@ class PluginContext(object):
     def __init__(self, csm=None):
         self._csm = csm
         self.current_plugin = ""
-        print("CSM")
-        print(csm)
         if csm is not None:
             self._connection = condoor.Connection(
                 self._csm.hostname,

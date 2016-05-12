@@ -45,15 +45,15 @@ class CSMPlugin(object):
 
     #: The set of strings representing the install phases during which the plugin will be dispatched.
     #: Empty set means that plugin will NEVER be executed. The currently supported values are:
-    #: 'Pre-Upgrade', 'Pre-Add', 'Add', 'Pre-Activate', 'Pre-Deactivate', 'Deactivate',
-    #: 'Remove', 'Commit'
+    #: *Pre-Upgrade*, *Pre-Add*, *Add*, *Pre-Activate*, *Pre-Deactivate*, *Deactivate*,
+    #: *Remove*, *Commit*
     phases = {()}
 
     #: The set of strings representing the supported platforms by the plugin. Empty set means ANY platform.
-    #: The currently supported values are: *ASR9K*, 'CRS', 'NCS6K'
+    #: The currently supported values are: *ASR9K*, *CRS*, *NCS6K*
     platforms = {()}
 
-    #: The set of operating system type strings. The supported values are: 'IOS', 'IOS XR', 'IOS XR 64 bit', 'IOS XE'.
+    #: The set of operating system type strings. The supported values are: *IOS*, *XR*, *eXR*, *XE*.
     #: Empty set means plugin will be executed regardless of the detected operating system.
     os = {()}
 
