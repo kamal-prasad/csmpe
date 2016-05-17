@@ -31,22 +31,36 @@ from csmpe.plugins import CSMPlugin
 
 
 class Plugin(CSMPlugin):
-    """This plugin checks if the node redundancy is sufficient to proceed the upgrade"""
-    name = "Node Redundancy Check Plugin"
-    platforms = {'ASR9K'}
-    phases = {'Pre-Upgrade', 'Pre-Activate'}
+    """This plugin checks the configuration filesystem"""
+    name = "Config Filesystem Check Plugin"
+    platforms = {'ASR9K', 'CRS', 'NCS6K'}
+    phases = {'Pre-Upgrade', "Pre-Activate", "Pre-Deactivate"}
 
     def run(self):
-        output = self.ctx.send("admin show redundancy location all")
+        """
+        RP/0/RSP0/CPU0:R3#cfs check
+        Tue May 17 09:56:43.720 UTC
+
+        Creating any missing directories in Configuration File system...OK
+        Initializing Configuration Version Manager...OK
+        Syncing commit database with running configuration...OK
+        """
+        ok = 0
+        message = []
+        output = self.ctx.send("cfs check")
         lines = output.split("\n", 50)
-        if len(lines) < 6:
-            self.ctx.error("Show redundancy output is insufficient.")
+        for line in lines:
+            if line != "":
+                message.append(line)
+            if 'OK' in line:
+                ok += 1
 
-        for ln, line in enumerate(lines[:6]):
-            if "is in STANDBY role" in line:
-                if "is ready" in lines[ln + 1]:
-                    break
-                else:
-                    self.ctx.error("Standby is not ready. Upgrade can not proceed.")
-
-        self.ctx.info("Node redundancy level sufficient")
+        for line in message:
+            if ok < 3:
+                self.ctx.warning(line)
+            else:
+                self.ctx.info(line)
+        if ok < 3:
+            self.ctx.error("The configuration filesystem has inconsistencies")
+        else:
+            self.ctx.info("Configuration filesystem is consistent")

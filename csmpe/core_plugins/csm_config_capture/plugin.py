@@ -26,26 +26,20 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
+
 from csmpe.plugins import CSMPlugin
 
 
 class Plugin(CSMPlugin):
-    """This plugin captures custom commands and stores in the log directory."""
-    name = "Custom Commands Capture Plugin"
+    """This plugin captures device configuration and stores in the log directory."""
+    name = "Config Capture Plugin"
     platforms = {'ASR9K', 'CRS', 'ASR900', 'N6K'}
     phases = {'Pre-Upgrade', 'Post-Upgrade'}
 
     def run(self):
-        command_list = self.ctx.custom_commands
-        if command_list:
-            for cmd in command_list:
-                self.ctx.info("Capturing output of '{}'".format(cmd))
-                output = self.ctx.send(cmd, timeout=2200)
-                file_name = self.ctx.save_to_file(cmd, output)
-                if file_name is None:
-                    self.ctx.error("Unable to save '{}' output to file: {}".format(cmd, file_name))
-                    return False
-
-        else:
-            self.ctx.info("No custom commands provided.")
-            return True
+        cmd = "show running-config"
+        output = self.ctx.send(cmd, timeout=2200)
+        file_name = self.ctx.save_to_file(cmd, output)
+        if file_name is None:
+            self.ctx.error("Unable to save device configuration to file: {}".format(file_name))
+            return False

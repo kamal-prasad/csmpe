@@ -1,6 +1,7 @@
 # =============================================================================
+# asr9k
 #
-# Copyright (c) 2016, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # # Author: Klaudiusz Staniek
@@ -26,38 +27,23 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-from asr9k_package_lib import SoftwarePackage
+
 from csmpe.plugins import CSMPlugin
-from install import install_add_remove, get_package
 
 
 class Plugin(CSMPlugin):
-    """This plugin removes inactive packages from the device."""
-    name = "Install Remove Plugin"
-    platforms = {'ASR9K'}
-    phases = {'Remove'}
+    """This plugin checks if there was a failed piece of config detected during startup"""
+    name = "Check Failed Startup Config Plugin"
+    platforms = {'ASR9K', 'CRS', 'NCS6K'}
+    phases = {'Post-Activate', 'Post-Upgrade'}
 
     def run(self):
-        packages = self.ctx.software_packages
-        if packages is None:
-            self.ctx.error("No package list provided")
+        output = self.ctx.send("show configuration failed startup")
+        lines = output.split("\n", 100)
+        if len(lines) < 6:
+            self.ctx.info("No failed configuration detected during startup")
             return
 
-        pkgs = SoftwarePackage.from_package_list(packages)
-
-        installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("admin show install inactive summary"))
-
-        packages_to_remove = pkgs & installed_inact
-        if not packages_to_remove:
-            self.ctx.warning("Packages already removed. Nothing to be removed")
-            return
-
-        to_remove = " ".join(map(str, packages_to_remove))
-
-        cmd = 'admin install remove {} prompt-level none async'.format(to_remove)
-
-        self.ctx.info("Remove Package(s) Pending")
-        self.ctx.post_status("Remove Package(s) Pending")
-        install_add_remove(self.ctx, cmd)
-        get_package(self.ctx)
-        self.ctx.info("Package(s) Removed Successfully")
+        self.ctx.warning("Some configuration parts failed during startup")
+        for line in lines:
+            self.ctx.warning(line)

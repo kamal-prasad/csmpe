@@ -1,7 +1,6 @@
 # =============================================================================
-# plugin
 #
-# Copyright (c)  2016, Cisco Systems
+# Copyright (c) 2016, Cisco Systems
 # All rights reserved.
 #
 # # Author: Klaudiusz Staniek
@@ -27,32 +26,39 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
+from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
+from install import install_add_remove, get_package
 
 
 class Plugin(CSMPlugin):
-    """This plugin checks the configuration filesystem"""
-    name = "Config Filesystem Check Plugin"
+    """This plugin removes inactive packages from the device."""
+    name = "Install Remove Plugin"
     platforms = {'ASR9K'}
-    phases = {'Pre-Upgrade', "Pre-Activate", "Pre-Deactivate"}
+    phases = {'Remove'}
 
     def run(self):
-        ok = 0
-        message = []
-        output = self.ctx.send("cfs check")
-        lines = output.split("\n", 50)
-        for line in lines:
-            if line != "":
-                message.append(line)
-            if 'OK' in line:
-                ok += 1
+        packages = self.ctx.software_packages
+        if packages is None:
+            self.ctx.error("No package list provided")
+            return
 
-        for line in message:
-            if ok < 3:
-                self.ctx.warning(line)
-            else:
-                self.ctx.info(line)
-        if ok < 3:
-            self.ctx.error("The configuration filesystem has inconsistencies")
-        else:
-            self.ctx.info("Configuration filesystem is consistent")
+        pkgs = SoftwarePackage.from_package_list(packages)
+
+        installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("admin show install inactive summary"))
+
+        packages_to_remove = pkgs & installed_inact
+        if not packages_to_remove:
+            self.ctx.warning("Packages already removed. Nothing to be removed")
+            return
+
+        to_remove = " ".join(map(str, packages_to_remove))
+
+        cmd = 'admin install remove {} prompt-level none async'.format(to_remove)
+
+        self.ctx.info("Remove Package(s) Pending")
+        self.ctx.post_status("Remove Package(s) Pending")
+        install_add_remove(self.ctx, cmd)
+        get_package(self.ctx)
+        self.ctx.info("Package(s) Removed Successfully")
+

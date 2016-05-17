@@ -26,25 +26,39 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
+from csmpe.plugins import CSMPlugin
+from install import install_add_remove, get_package
 
-def get_filesystems(ctx):
-    output = ctx.send("show filesystem")
-    file_systems = {}
-    start = False
-    for line in output.split('\n'):
-        if line.strip().endswith("Prefixes"):
-            start = True
-            continue
-        if start:
-            items = line.split()
-            if len(items) == 5:
-                size, free, fs_type, flags, fs_name, = line.split()
-                file_systems[fs_name] = {
-                    'size': 0 if size == '-' else long(size),
-                    'free': 0 if size == '-' else long(free),
-                    'fs_type': fs_type,
-                    'flags': flags,
-                }
-            else:
-                continue
-    return file_systems
+
+class Plugin(CSMPlugin):
+    """This plugin adds packages from repository to the device."""
+    name = "Install Add Plugin"
+    platforms = {'ASR9K'}
+    phases = {'Add'}
+
+    def run(self):
+        server_repository_url = self.ctx.server_repository_url
+
+        if server_repository_url is None:
+            self.ctx.error("No repository provided")
+            return
+
+        packages = self.ctx.software_packages
+        if packages is None:
+            self.ctx.error("No package list provided")
+            return
+
+        has_tar = False
+
+        s_packages = " ".join([package for package in packages
+                               if '-vm' not in package and ('pie' in package or 'tar' in package)])
+        if 'tar' in s_packages:
+            has_tar = True
+
+        cmd = "admin install add source {} {} async".format(server_repository_url, s_packages)
+
+        self.ctx.info("Add Package(s) Pending")
+        self.ctx.post_status("Add Package(s) Pending")
+        install_add_remove(self.ctx, cmd, has_tar=has_tar)
+        get_package(self.ctx)
+        self.ctx.info("Package(s) Added Successfully")

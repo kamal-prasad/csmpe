@@ -25,10 +25,9 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-
-import itertools
 import re
 import time
+import csmpe
 
 install_error_pattern = re.compile("Error:    (.*)$", re.MULTILINE)
 
@@ -40,6 +39,8 @@ def log_install_errors(ctx, output):
 
 
 def get_package(ctx):
+    csmpe.core_plugins.csm_get_software_packages.ios_xr.get_package(ctx)
+    """
     if ctx.os_type == "XR":
         if hasattr(ctx, 'active_cli'):
             output = ctx.send("admin show install active summary")
@@ -61,6 +62,7 @@ def get_package(ctx):
         if hasattr(ctx, 'committed_cli'):
             output = ctx.send("admin show install committed")
             ctx.committed_cli = output
+    """
 
 
 def watch_operation(ctx, op_id=0):

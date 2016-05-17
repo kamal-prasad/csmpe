@@ -3,8 +3,6 @@
 # Copyright (c) 2016, Cisco Systems
 # All rights reserved.
 #
-# # Author: Klaudiusz Staniek
-#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
@@ -30,22 +28,18 @@ from csmpe.plugins import CSMPlugin
 
 
 class Plugin(CSMPlugin):
-    """This plugin captures custom commands and stores in the log directory."""
-    name = "Custom Commands Capture Plugin"
-    platforms = {'ASR9K', 'CRS', 'ASR900', 'N6K'}
-    phases = {'Pre-Upgrade', 'Post-Upgrade'}
+    """This plugin retrieves software information from the device."""
+    name = "Get Software Packages Plugin"
+    platforms = {'N9K'}
+    phases = {'Get-Software-Packages'}
 
     def run(self):
-        command_list = self.ctx.custom_commands
-        if command_list:
-            for cmd in command_list:
-                self.ctx.info("Capturing output of '{}'".format(cmd))
-                output = self.ctx.send(cmd, timeout=2200)
-                file_name = self.ctx.save_to_file(cmd, output)
-                if file_name is None:
-                    self.ctx.error("Unable to save '{}' output to file: {}".format(cmd, file_name))
-                    return False
+        get_package(self.ctx)
 
-        else:
-            self.ctx.info("No custom commands provided.")
-            return True
+
+def get_package(ctx):
+    if hasattr(ctx, 'committed_cli'):
+        ctx.committed_cli = ctx.send('sh install packages | grep lib32_n9000')
+    if hasattr(ctx, 'inactive_cli'):
+        ctx.inactive_cli = ctx.send('sh install inactive')
+

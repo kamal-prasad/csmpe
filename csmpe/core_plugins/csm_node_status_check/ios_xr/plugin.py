@@ -4,8 +4,6 @@
 # Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
-# # Author: Klaudiusz Staniek
-#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
@@ -64,6 +62,33 @@ class Plugin(CSMPlugin):
         return inventory
 
     def run(self):
+        """
+        Platform: ASR9K
+        RP/0/RSP0/CPU0:R3#admin show platform
+        Tue May 17 08:23:19.612 UTC
+        Node            Type                      State            Config State
+        -----------------------------------------------------------------------------
+        0/RSP0/CPU0     A9K-RSP440-SE(Active)     IOS XR RUN       PWR,NSHUT,MON
+        0/FT0/SP        ASR-9006-FAN              READY
+        0/1/CPU0        A9K-40GE-E                IOS XR RUN       PWR,NSHUT,MON
+        0/2/CPU0        A9K-MOD80-SE              UNPOWERED        NPWR,NSHUT,MON
+        0/3/CPU0        A9K-8T-L                  UNPOWERED        NPWR,NSHUT,MON
+        0/PM0/0/SP      A9K-3KW-AC                READY            PWR,NSHUT,MON
+        0/PM0/1/SP      A9K-3KW-AC                READY            PWR,NSHUT,MON
+
+        Platform: CRS
+        RP/0/RP0/CPU0:CRS-X-Deploy2#admin show platform
+        Tue May 17 21:11:56.915 UTC
+        Node          Type              PLIM               State           Config State
+        ------------- ----------------- ------------------ --------------- ---------------
+        0/0/CPU0      MSC-X             40-10GbE           IOS XR RUN      PWR,NSHUT,MON
+        0/2/CPU0      FP-X              4-100GbE           IOS XR RUN      PWR,NSHUT,MON
+        0/3/CPU0      MSC-140G          N/A                UNPOWERED       NPWR,NSHUT,MON
+        0/4/CPU0      FP-X              N/A                UNPOWERED       NPWR,NSHUT,MON
+        0/7/CPU0      MSC-X             N/A                UNPOWERED       NPWR,NSHUT,MON
+        0/8/CPU0      MSC-140G          N/A                UNPOWERED       NPWR,NSHUT,MON
+        0/14/CPU0     MSC-X             4-100GbE           IOS XR RUN      PWR,NSHUT,MON
+        """
         output = self.ctx.send("admin show platform")
         inventory = self._parse_show_platform(output)
         valid_state = [

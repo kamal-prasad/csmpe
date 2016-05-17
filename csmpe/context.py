@@ -46,6 +46,9 @@ class InstallContext(object):
 
     def __init__(self):
         self.hostname = "Hostname"
+        self.committed_cli = None
+        self.active_cli = None
+        self.inactive_cli = None
 
     def post_status(self, message):
         print("[CSM Status] {}".format(message))

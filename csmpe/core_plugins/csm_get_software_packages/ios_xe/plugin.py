@@ -3,8 +3,6 @@
 # Copyright (c) 2016, Cisco Systems
 # All rights reserved.
 #
-# # Author: Klaudiusz Staniek
-#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
@@ -26,20 +24,22 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-
 from csmpe.plugins import CSMPlugin
 
 
 class Plugin(CSMPlugin):
-    """This plugin captures device configuration and stores in the log directory."""
-    name = "Config Capture Plugin"
-    platforms = {'ASR9K'}
-    phases = {'Pre-Upgrade', 'Post-Upgrade'}
+    """This plugin retrieves software information from the device."""
+    name = "Get Software Packages Plugin"
+    platforms = {'ASR900'}
+    phases = {'Get-Software-Packages'}
 
     def run(self):
-        cmd = "show running-config"
-        output = self.ctx.send(cmd, timeout=2200)
-        file_name = self.ctx.save_to_file(cmd, output)
-        if file_name is None:
-            self.ctx.error("Unable to save device configuration to file: {}".format(file_name))
-            return False
+        get_package(self.ctx)
+
+
+def get_package(ctx):
+    if hasattr(ctx, 'committed_cli'):
+        ctx.committed_cli = ctx.send('sh version')
+    if hasattr(ctx, 'inactive_cli'):
+        ctx.send('cd bootflash:')
+        ctx.inactive_cli = ctx.send('dir')
