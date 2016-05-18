@@ -69,9 +69,11 @@ class Host(object):
 
 
 @delegate("_csm", ("post_status",), ("custom_commands", "success", "operation_id", "server_repository_url",
-                                     "software_packages", "active_cli", "inactive_cli", "committed_cli", "hostname"))
+                                     "software_packages", "active_cli", "inactive_cli", "committed_cli", "hostname",
+                                     "log_directory", "pre_migrate_config_filename", "migration_directory",
+                                     "post_migrate_config_handling_option", "server", "host"))
 @delegate("_connection", ("connect", "disconnect", "reconnect", "discovery", "send", "run_fsm"),
-          ("family", "prompt", "os_type"))
+          ("family", "prompt", "os_type", "os_version"))
 class PluginContext(object):
     """ This is a class passed to the constructor during plugin instantiation.
     Thi class provides the API for the plugins to allow the communication with the CMS Server and device.
@@ -179,9 +181,8 @@ class PluginContext(object):
                 return result, None
         return None, None
 
-    def _normalize_filename(self, name):
+    def normalize_filename(self, name):
         filename = re.sub(r"\W+", '-', name)
-        filename += "." + (str(self.phase).upper() if self.phase is None else str(self.phase).upper())
         filename += ".txt"
         return filename
 
@@ -191,7 +192,7 @@ class PluginContext(object):
         """
 
         store_dir = self._csm.log_directory
-        file_name = self._normalize_filename(name)
+        file_name = self.normalize_filename(name)
         full_path = os.path.join(store_dir, file_name)
         with open(full_path, "w") as f:
             f.write(data)

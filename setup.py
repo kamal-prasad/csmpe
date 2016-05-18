@@ -78,6 +78,9 @@ setup(
             '{} = csmpe.core_plugins.csm_install_operations.deactivate_asr9k:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_install_operations.activate_asr9k:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_check_config_filesystem.plugin:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_install_operations.pre_migrate:Plugin'.format(uuid4()),
+            # '{} = csmpe.core_plugins.csm_migrate_to_exr.migrate:Plugin'.format(uuid4()),
+            # '{} = csmpe.core_plugins.csm_migrate_to_exr.post_migrate:Plugin'.format(uuid4()),
 
         ],
     },
