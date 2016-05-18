@@ -92,13 +92,25 @@ class SoftwarePackage(object):
         return self.platform and self.version and self.architecture and (self.package_type or self.smu or self.sp)
 
     def __eq__(self, other):
-        return self.platform == other.platform and \
+        result = self.platform == other.platform and \
             self.package_type == other.package_type and \
             self.architecture == other.architecture and \
             self.version == other.version and \
             self.smu == other.smu and \
             self.sp == other.sp and \
             self.subversion == other.subversion
+
+        if result:
+            """
+            Append the disk location to the package name
+            FIXME: CSM should probably include the disk location in the package name
+            """
+            if ":" in self.package_name:
+                disk = self.package_name.split(':')[0] + ":"
+                if not other.package_name.startswith(disk):
+                    other.package_name = disk + other.package_name
+
+        return result
 
     def __hash__(self):
         return hash("{}{}{}{}{}".format(

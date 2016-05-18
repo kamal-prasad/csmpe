@@ -1,10 +1,7 @@
 # =============================================================================
-# plugin
 #
-# Copyright (c)  2016, Cisco Systems
+# Copyright (c) 2016, Cisco Systems
 # All rights reserved.
-#
-# # Author: Klaudiusz Staniek
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -31,28 +28,18 @@ from csmpe.plugins import CSMPlugin
 
 
 class Plugin(CSMPlugin):
-    """This plugin checks the configuration filesystem"""
-    name = "Config Filesystem Check Plugin"
-    platforms = {'ASR9K'}
-    phases = {'Pre-Upgrade', "Pre-Activate", "Pre-Deactivate"}
+    """This plugin retrieves software information from the device."""
+    name = "Get Software Packages Plugin"
+    platforms = {'ASR900'}
+    phases = {'Get-Software-Packages'}
 
     def run(self):
-        ok = 0
-        message = []
-        output = self.ctx.send("cfs check")
-        lines = output.split("\n", 50)
-        for line in lines:
-            if line != "":
-                message.append(line)
-            if 'OK' in line:
-                ok += 1
+        get_package(self.ctx)
 
-        for line in message:
-            if ok < 3:
-                self.ctx.warning(line)
-            else:
-                self.ctx.info(line)
-        if ok < 3:
-            self.ctx.error("The configuration filesystem has inconsistencies")
-        else:
-            self.ctx.info("Configuration filesystem is consistent")
+
+def get_package(ctx):
+    if hasattr(ctx, 'committed_cli'):
+        ctx.committed_cli = ctx.send('sh version')
+    if hasattr(ctx, 'inactive_cli'):
+        ctx.send('cd bootflash:')
+        ctx.inactive_cli = ctx.send('dir')

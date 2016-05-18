@@ -28,6 +28,31 @@
 
 
 def get_filesystems(ctx):
+    """
+    RP/0/RSP0/CPU0:R3#show filesystem
+    Tue May 17 08:06:50.659 UTC
+    File Systems:
+
+         Size(b)     Free(b)        Type  Flags  Prefixes
+               -           -     network     rw  qsm/dev/fs/tftp:
+               -           -     network     rw  qsm/dev/fs/rcp:
+               -           -     network     rw  qsm/dev/fs/ftp:
+      2420113408  2417984512  dumper-lnk     rw  qsm/dumper_disk0a:
+      2420113408  2419496448  dumper-lnk     rw  qsm/dumper_disk1a:
+      6442434560  4083949568  dumper-lnk     rw  qsm/dumper_harddisk:
+       771276800   771268608  dumper-lnk     rw  qsm/dumper_harddiskb:
+       805306368   798971392  dumper-lnk     rw  qsm/dumper_harddiska:
+     12101599232 10883157504  dumper-lnk     rw  qsm/dumper_disk1:
+     12101599232  7567057920  dumper-lnk     rw  qsm/dumper_disk0:
+     12101599232  7567057920  flash-disk     rw  disk0:
+      6442434560  4083949568    harddisk     rw  harddisk:
+       805306368   798971392    harddisk     rw  harddiska:
+       771276800   771268608    harddisk     rw  harddiskb:
+     12101599232 10883157504  flash-disk     rw  disk1:
+      2420113408  2417984512  flash-disk     rw  disk0a:
+      2420113408  2419496448  flash-disk     rw  disk1a:
+          515072      485376       nvram     rw  nvram:
+    """
     output = ctx.send("show filesystem")
     file_systems = {}
     start = False

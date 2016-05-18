@@ -1,6 +1,7 @@
 # =============================================================================
+# asr9k
 #
-# Copyright (c) 2016, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # # Author: Klaudiusz Staniek
@@ -31,15 +32,18 @@ from csmpe.plugins import CSMPlugin
 
 
 class Plugin(CSMPlugin):
-    """This plugin captures device configuration and stores in the log directory."""
-    name = "Config Capture Plugin"
-    platforms = {'ASR9K'}
-    phases = {'Pre-Upgrade', 'Post-Upgrade'}
+    """This plugin checks if there was a failed piece of config detected during startup"""
+    name = "Check Failed Startup Config Plugin"
+    platforms = {'ASR9K', 'CRS', 'NCS6K'}
+    phases = {'Post-Activate', 'Post-Upgrade'}
 
     def run(self):
-        cmd = "show running-config"
-        output = self.ctx.send(cmd, timeout=2200)
-        file_name = self.ctx.save_to_file(cmd, output)
-        if file_name is None:
-            self.ctx.error("Unable to save device configuration to file: {}".format(file_name))
-            return False
+        output = self.ctx.send("show configuration failed startup")
+        lines = output.split("\n", 100)
+        if len(lines) < 6:
+            self.ctx.info("No failed configuration detected during startup")
+            return
+
+        self.ctx.warning("Some configuration parts failed during startup")
+        for line in lines:
+            self.ctx.warning(line)

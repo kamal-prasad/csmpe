@@ -26,51 +26,42 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-
-import re
-
+from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
-from install import watch_operation, log_install_errors, get_package
+from install import install_add_remove
+from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
-    """This plugin Activates packages on the device."""
-    name = "Install Commit Plugin"
+    """This plugin removes inactive packages from the device."""
+    name = "Install Remove Plugin"
     platforms = {'ASR9K'}
-    phases = {'Commit'}
+    phases = {'Remove'}
 
     def run(self):
-        """
-        It performs commit operation
-        """
-
-        failed_oper = r'Install operation (\d+) failed'
-        completed_with_failure = 'Install operation (\d+) completed with failure'
-        success_oper = r'Install operation (\d+) completed successfully'
-
-        cmd = "admin install commit"
-        output = self.ctx.send(cmd)
-        result = re.search('Install operation (\d+) \'', output)
-        if result:
-            op_id = result.group(1)
-            watch_operation(self.ctx, op_id)
-        else:
-            log_install_errors(self.ctx, output)
-            self.ctx.error("Operation ID not found.")
+        packages = self.ctx.software_packages
+        if packages is None:
+            self.ctx.error("No package list provided")
             return
 
-        cmd = "admin show install log {} detail".format(op_id)
-        output = self.ctx.send(cmd)
+        pkgs = SoftwarePackage.from_package_list(packages)
 
-        if re.search(failed_oper, output):
-            log_install_errors(self.ctx, output)
-            self.ctx.error("Install operation failed.")
+        installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("admin show install inactive summary"))
+        packages_to_remove = pkgs & installed_inact
+
+        if not packages_to_remove:
+            self.ctx.warning("Packages already removed. Nothing to be removed")
             return
 
-        if re.search(completed_with_failure, output):
-            log_install_errors(self.ctx, output)
-            self.ctx.info("Completed with failure but failure was after Point of No Return.")
-        elif re.search(success_oper, output):
-            self.ctx.info("Operation {} finished successfully.".format(op_id))
+        to_remove = " ".join(map(str, packages_to_remove))
 
+        cmd = 'admin install remove {} prompt-level none async'.format(to_remove)
+
+        self.ctx.info("Remove Package(s) Pending")
+        self.ctx.post_status("Remove Package(s) Pending")
+        install_add_remove(self.ctx, cmd)
+        self.ctx.info("Package(s) Removed Successfully")
+
+        # Refresh package information
         get_package(self.ctx)
+

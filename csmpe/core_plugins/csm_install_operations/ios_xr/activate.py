@@ -26,67 +26,68 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-from asr9k_package_lib import SoftwarePackage
+
+from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
-from install import install_activate_deactivate, get_package
+from install import install_activate_deactivate
+from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
-    """This plugin deactivates packages on the device."""
-    name = "Install Deactivate Plugin"
+    """This plugin Activates packages on the device."""
+    name = "Install Activate Plugin"
     platforms = {'ASR9K'}
-    phases = {'Deactivate'}
+    phases = {'Activate'}
 
-    def get_tobe_deactivated_pkg_list(self):
+    def get_tobe_activated_pkg_list(self):
         """
         Produces a list of packaged to be deactivated
         """
         packages = self.ctx.software_packages
-        pkgs = SoftwarePackage.from_package_list(packages)
 
+        pkgs = SoftwarePackage.from_package_list(packages)
         installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("admin show install inactive summary"))
         installed_act = SoftwarePackage.from_show_cmd(self.ctx.send("admin show install active summary"))
 
-        # Packages in to deactivate but not inactive
-        packages_to_deactivate = pkgs - installed_inact
-
-        if packages_to_deactivate:
-            packages_to_deactivate = pkgs & installed_act  # packages to be deactivated and installed active packages
-            if not packages_to_deactivate:
+        # Packages to activate but not already active
+        packages_to_activate = pkgs - installed_act
+        if packages_to_activate:
+            packages_to_activate = pkgs & installed_inact  # packages to be deactivated and installed active packages
+            if not packages_to_activate:
                 to_deactivate = " ".join(map(str, pkgs))
 
-                state_of_packages = "\nTo deactivate :{} \nInactive: {} \nActive: {}".format(
+                state_of_packages = "\nTo activate :{} \nInactive: {} \nActive: {}".format(
                     to_deactivate, installed_inact, installed_act
                 )
                 self.ctx.info(state_of_packages)
-                self.ctx.error('To be deactivated packages not in inactive packages list.')
+                self.ctx.error('To be activated packages not in inactive packages list.')
                 return None
             else:
-                return " ".join(map(str, packages_to_deactivate))
+                return " ".join(map(str, packages_to_activate))
 
     def run(self):
         """
-        Performs install deactivate operation
+        Performs install activate operation
         """
         operation_id = None
         if hasattr(self.ctx, 'operation_id'):
-            self.ctx.log("Using the operation ID: {}".format(self.ctx.operation_id))
+            self.ctx.info("Using the operation ID: {}".format(self.ctx.operation_id))
             operation_id = self.ctx.operation_id
-
         if operation_id is None or operation_id == -1:
-            tobe_deactivated = self.get_tobe_deactivated_pkg_list()
-            if not tobe_deactivated:
-                self.ctx.info("Nothing to be deactivated.")
+            tobe_activated = self.get_tobe_activated_pkg_list()
+            if not tobe_activated:
+                self.ctx.info("Nothing to be activated.")
                 return True
 
         if operation_id is not None and operation_id != -1:
-            cmd = 'admin install deactivate id {} prompt-level none async'.format(operation_id)
+            cmd = 'admin install activate id {} prompt-level none async'.format(operation_id)
         else:
-            cmd = 'admin install deactivate {} prompt-level none async'.format(tobe_deactivated)
+            cmd = 'admin install activate {} prompt-level none async'.format(tobe_activated)
 
-        print(cmd)
-        self.ctx.info("Deactivate package(s) pending")
-        self.ctx.post_status("Deactivate Package(s) Pending")
+        self.ctx.info("Activate package(s) pending")
+        self.ctx.post_status("Activate Package(s) Pending")
         install_activate_deactivate(self.ctx, cmd)
+        self.ctx.info("Activate package(s) done")
+
+        # Refresh package information
         get_package(self.ctx)
-        self.ctx.info("Deactivate package(s) done")

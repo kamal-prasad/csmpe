@@ -1,5 +1,5 @@
 # =============================================================================
-# asr9k
+# plugin
 #
 # Copyright (c)  2016, Cisco Systems
 # All rights reserved.
@@ -27,23 +27,38 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-
 from csmpe.plugins import CSMPlugin
 
 
 class Plugin(CSMPlugin):
-    """This plugin checks if there was a failed piece of config detected during startup"""
-    name = "Check Failed Startup Config Plugin"
-    platforms = {'ASR9K'}
-    phases = {'Post-Activate', 'Post-Upgrade'}
+    """
+    This plugin checks if the node redundancy is sufficient to proceed the upgrade.
+    """
+    name = "Node Redundancy Check Plugin"
+    platforms = {'ASR9K', 'CRS'}
+    phases = {'Pre-Upgrade', 'Pre-Activate'}
 
     def run(self):
-        output = self.ctx.send("show configuration failed startup")
-        lines = output.split("\n", 100)
+        """
+        RP/0/RP0/CPU0:CRS-X-Deploy2#admin show redundancy location all
+        Tue May 17 21:00:15.863 UTC
+        Redundancy information for node 0/RP0/CPU0:
+        ==========================================
+        Node 0/RP0/CPU0 is in ACTIVE role
+        Partner node (0/RP1/CPU0) is in STANDBY role
+        Standby node in 0/RP1/CPU0 is ready
+        Standby node in 0/RP1/CPU0 is NSR-ready
+        """
+        output = self.ctx.send("admin show redundancy location all")
+        lines = output.split("\n", 50)
         if len(lines) < 6:
-            self.ctx.info("No failed configuration detected during startup")
-            return
+            self.ctx.error("Show redundancy output is insufficient.")
 
-        self.ctx.warning("Some configuration parts failed during startup")
-        for line in lines:
-            self.ctx.warning(line)
+        for ln, line in enumerate(lines[:6]):
+            if "is in STANDBY role" in line:
+                if "is ready" in lines[ln + 1]:
+                    break
+                else:
+                    self.ctx.error("Standby is not ready. Upgrade can not proceed.")
+
+        self.ctx.info("Node redundancy level sufficient")

@@ -26,26 +26,53 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
+
+import re
+
 from csmpe.plugins import CSMPlugin
+from install import watch_operation, log_install_errors
+from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
-    """This plugin captures custom commands and stores in the log directory."""
-    name = "Custom Commands Capture Plugin"
-    platforms = {'ASR9K', 'CRS', 'ASR900', 'N6K'}
-    phases = {'Pre-Upgrade', 'Post-Upgrade'}
+    """This plugin Activates packages on the device."""
+    name = "Install Commit Plugin"
+    platforms = {'ASR9K'}
+    phases = {'Commit'}
 
     def run(self):
-        command_list = self.ctx.custom_commands
-        if command_list:
-            for cmd in command_list:
-                self.ctx.info("Capturing output of '{}'".format(cmd))
-                output = self.ctx.send(cmd, timeout=2200)
-                file_name = self.ctx.save_to_file(cmd, output)
-                if file_name is None:
-                    self.ctx.error("Unable to save '{}' output to file: {}".format(cmd, file_name))
-                    return False
+        """
+        It performs commit operation
+        """
 
+        failed_oper = r'Install operation (\d+) failed'
+        completed_with_failure = 'Install operation (\d+) completed with failure'
+        success_oper = r'Install operation (\d+) completed successfully'
+
+        cmd = "admin install commit"
+        output = self.ctx.send(cmd)
+        result = re.search('Install operation (\d+) \'', output)
+        if result:
+            op_id = result.group(1)
+            watch_operation(self.ctx, op_id)
         else:
-            self.ctx.info("No custom commands provided.")
-            return True
+            log_install_errors(self.ctx, output)
+            self.ctx.error("Operation ID not found.")
+            return
+
+        cmd = "admin show install log {} detail".format(op_id)
+        output = self.ctx.send(cmd)
+
+        if re.search(failed_oper, output):
+            log_install_errors(self.ctx, output)
+            self.ctx.error("Install operation failed.")
+            return
+
+        if re.search(completed_with_failure, output):
+            log_install_errors(self.ctx, output)
+            self.ctx.info("Completed with failure but failure was after Point of No Return.")
+        elif re.search(success_oper, output):
+            self.ctx.info("Operation {} finished successfully.".format(op_id))
+
+        # Refresh package information
+        get_package(self.ctx)

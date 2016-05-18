@@ -26,38 +26,42 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-from asr9k_package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
-from install import install_add_remove, get_package
+from install import install_add_remove
+from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
-    """This plugin removes inactive packages from the device."""
-    name = "Install Remove Plugin"
+    """This plugin adds packages from repository to the device."""
+    name = "Install Add Plugin"
     platforms = {'ASR9K'}
-    phases = {'Remove'}
+    phases = {'Add'}
 
     def run(self):
+        server_repository_url = self.ctx.server_repository_url
+
+        if server_repository_url is None:
+            self.ctx.error("No repository provided")
+            return
+
         packages = self.ctx.software_packages
         if packages is None:
             self.ctx.error("No package list provided")
             return
 
-        pkgs = SoftwarePackage.from_package_list(packages)
+        has_tar = False
 
-        installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("admin show install inactive summary"))
+        s_packages = " ".join([package for package in packages
+                               if '-vm' not in package and ('pie' in package or 'tar' in package)])
+        if 'tar' in s_packages:
+            has_tar = True
 
-        packages_to_remove = pkgs & installed_inact
-        if not packages_to_remove:
-            self.ctx.warning("Packages already removed. Nothing to be removed")
-            return
+        cmd = "admin install add source {} {} async".format(server_repository_url, s_packages)
 
-        to_remove = " ".join(map(str, packages_to_remove))
+        self.ctx.info("Add Package(s) Pending")
+        self.ctx.post_status("Add Package(s) Pending")
+        install_add_remove(self.ctx, cmd, has_tar=has_tar)
+        self.ctx.info("Package(s) Added Successfully")
 
-        cmd = 'admin install remove {} prompt-level none async'.format(to_remove)
-
-        self.ctx.info("Remove Package(s) Pending")
-        self.ctx.post_status("Remove Package(s) Pending")
-        install_add_remove(self.ctx, cmd)
+        # Refresh package information
         get_package(self.ctx)
-        self.ctx.info("Package(s) Removed Successfully")
