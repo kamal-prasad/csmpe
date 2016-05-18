@@ -184,7 +184,6 @@ class PluginContext(object):
 
     def _normalize_filename(self, name):
         filename = re.sub(r"\W+", '-', name)
-        filename += "." + (str(self.phase).upper() if self.phase is None else str(self.phase).upper())
         filename += ".txt"
         return filename
 

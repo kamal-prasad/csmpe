@@ -90,6 +90,8 @@ setup(
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.deactivate:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.activate:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.commit:Plugin'.format(uuid4()),
+
+            '{} = csmpe.core_plugins.csm_check_isis_neighbors.ios_xr.plugin:Plugin'.format(uuid4()),
         ],
     },
     classifiers=[
