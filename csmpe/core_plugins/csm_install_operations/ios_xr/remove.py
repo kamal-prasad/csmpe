@@ -28,7 +28,8 @@
 
 from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
-from install import install_add_remove, get_package
+from install import install_add_remove
+from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
@@ -46,8 +47,8 @@ class Plugin(CSMPlugin):
         pkgs = SoftwarePackage.from_package_list(packages)
 
         installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("admin show install inactive summary"))
-
         packages_to_remove = pkgs & installed_inact
+
         if not packages_to_remove:
             self.ctx.warning("Packages already removed. Nothing to be removed")
             return
@@ -59,6 +60,8 @@ class Plugin(CSMPlugin):
         self.ctx.info("Remove Package(s) Pending")
         self.ctx.post_status("Remove Package(s) Pending")
         install_add_remove(self.ctx, cmd)
-        get_package(self.ctx)
         self.ctx.info("Package(s) Removed Successfully")
+
+        # Refresh package information
+        get_package(self.ctx)
 

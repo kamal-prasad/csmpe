@@ -27,7 +27,8 @@
 # =============================================================================
 
 from csmpe.plugins import CSMPlugin
-from install import install_add_remove, get_package
+from install import install_add_remove
+from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
@@ -60,5 +61,7 @@ class Plugin(CSMPlugin):
         self.ctx.info("Add Package(s) Pending")
         self.ctx.post_status("Add Package(s) Pending")
         install_add_remove(self.ctx, cmd, has_tar=has_tar)
-        get_package(self.ctx)
         self.ctx.info("Package(s) Added Successfully")
+
+        # Refresh package information
+        get_package(self.ctx)

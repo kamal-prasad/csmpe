@@ -30,7 +30,8 @@
 import re
 
 from csmpe.plugins import CSMPlugin
-from install import watch_operation, log_install_errors, get_package
+from install import watch_operation, log_install_errors
+from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
@@ -73,4 +74,5 @@ class Plugin(CSMPlugin):
         elif re.search(success_oper, output):
             self.ctx.info("Operation {} finished successfully.".format(op_id))
 
+        # Refresh package information
         get_package(self.ctx)

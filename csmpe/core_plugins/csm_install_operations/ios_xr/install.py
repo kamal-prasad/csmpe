@@ -27,7 +27,7 @@
 # =============================================================================
 import re
 import time
-import csmpe
+import itertools
 
 install_error_pattern = re.compile("Error:    (.*)$", re.MULTILINE)
 
@@ -36,34 +36,6 @@ def log_install_errors(ctx, output):
         errors = re.findall(install_error_pattern, output)
         for line in errors:
             ctx.warning(line)
-
-
-def get_package(ctx):
-    csmpe.core_plugins.csm_get_software_packages.ios_xr.get_package(ctx)
-    """
-    if ctx.os_type == "XR":
-        if hasattr(ctx, 'active_cli'):
-            output = ctx.send("admin show install active summary")
-            ctx.active_cli = output
-        if hasattr(ctx, 'inactive_cli'):
-            output = ctx.send("admin show install inactive summary")
-            ctx.inactive_cli = output
-        if hasattr(ctx, 'committed_cli'):
-            output = ctx.send("admin show install committed summary")
-            ctx.committed_cli = output
-
-    if ctx.os_type == "eXR":
-        if hasattr(ctx, 'active_cli'):
-            output = ctx.send("admin show install active")
-            ctx.active_cli = output
-        if hasattr(ctx.csm, 'inactive_cli'):
-            output = ctx.send("admin show install inactive")
-            ctx.inactive_cli = output
-        if hasattr(ctx, 'committed_cli'):
-            output = ctx.send("admin show install committed")
-            ctx.committed_cli = output
-    """
-
 
 def watch_operation(ctx, op_id=0):
         """
@@ -274,7 +246,6 @@ def install_add_remove(ctx, cmd, has_tar=False):
             ctx.error("Operation {} failed".format(op_id))
             return  # for same of clarity
 
-        get_package(ctx)
         ctx.info("Operation {} finished successfully".format(op_id))
         return  # for sake of clarity
     else:
@@ -302,7 +273,7 @@ def install_activate_deactivate(ctx, cmd):
         if not success:
             ctx.error("Reload or boot failure")
             return
-        get_package(ctx)
+
         ctx.info("Operation {} finished successfully".format(op_id))
         return
     else:

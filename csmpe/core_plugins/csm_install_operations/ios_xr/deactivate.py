@@ -28,7 +28,8 @@
 
 from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
-from install import install_activate_deactivate, get_package
+from install import install_activate_deactivate
+from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
@@ -70,7 +71,7 @@ class Plugin(CSMPlugin):
         """
         operation_id = None
         if hasattr(self.ctx, 'operation_id'):
-            self.ctx.log("Using the operation ID: {}".format(self.ctx.operation_id))
+            self.ctx.info("Using the operation ID: {}".format(self.ctx.operation_id))
             operation_id = self.ctx.operation_id
 
         if operation_id is None or operation_id == -1:
@@ -84,9 +85,10 @@ class Plugin(CSMPlugin):
         else:
             cmd = 'admin install deactivate {} prompt-level none async'.format(tobe_deactivated)
 
-        print(cmd)
         self.ctx.info("Deactivate package(s) pending")
         self.ctx.post_status("Deactivate Package(s) Pending")
         install_activate_deactivate(self.ctx, cmd)
-        get_package(self.ctx)
         self.ctx.info("Deactivate package(s) done")
+
+        # Refresh package information
+        get_package(self.ctx)
