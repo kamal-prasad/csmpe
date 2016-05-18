@@ -28,7 +28,7 @@
 
 from unittest import TestCase, skip, skipIf
 
-from csmpe.core_plugins.csm_install_operations import asr9k_package_lib as plib
+from csmpe.core_plugins.csm_install_operations.ios_xr import package_lib as plib
 
 
 class TestSoftwarePackage(TestCase):
