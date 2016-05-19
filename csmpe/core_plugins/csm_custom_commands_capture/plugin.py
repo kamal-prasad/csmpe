@@ -32,7 +32,7 @@ from csmpe.plugins import CSMPlugin
 class Plugin(CSMPlugin):
     """This plugin captures custom commands and stores in the log directory."""
     name = "Custom Commands Capture Plugin"
-    platforms = {'ASR9K', 'CRS', 'ASR900', 'N6K'}
+    platforms = {'ASR9K', 'CRS', 'NCS6K', 'ASR900', 'N6K'}
     phases = {'Pre-Upgrade', 'Post-Upgrade'}
 
     def run(self):
