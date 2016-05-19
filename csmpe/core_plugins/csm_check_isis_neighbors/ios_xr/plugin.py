@@ -32,12 +32,20 @@ from csmpe.plugins import CSMPlugin
 class Plugin(CSMPlugin):
     """This plugin checks the ISIS neighbor."""
     name = "ISIS Neighbor Check Plugin"
-    platforms = {'ASR9K'}
+    platforms = {'ASR9K', 'CRS', 'NCS6K'}
     phases = {'Pre-Upgrade', 'Post-Upgrade'}
 
     def run(self):
         """
-        ASR9k Pre-upgrade check
+        RP/0/RP0/CPU0:#show isis neighbor summary
+        Thu May 19 18:06:11.239 UTC
+
+        IS-IS isp neighbor summary:
+        State         L1       L2     L1L2
+        Up             0        0        1
+        Init           0        0        0
+        Failed         0        0        0
+
         This plugin check the number of ISIS Neighbors and store this information in format
         {
             <instance>: {
@@ -47,13 +55,6 @@ class Plugin(CSMPlugin):
             }
         }
         """
-        cmd = "show running-config"
-        output = self.ctx.send(cmd, timeout=2200)
-        file_name = self.ctx.save_to_file(cmd, output)
-        if file_name is None:
-            self.ctx.error("Unable to save device configuration to file: {}".format(file_name))
-            return False
-
         cmd = "show isis neighbor summary"
         isis_neighbor_info = {}
         output = self.ctx.send(cmd)
@@ -84,15 +85,15 @@ class Plugin(CSMPlugin):
                     for state, neighbors in state_dict.items():
                         self.ctx.info("Instance {} {:<6} L1={} L2={} L1L2={}".format(instance, state, *neighbors))
 
-                full_path = self.ctx.save_to_file(cmd, output)
-                if full_path:
-                    self.ctx.info("The '{}' command output saved to {}".format(cmd, full_path))
+                filename = self.ctx.save_to_file(cmd, output)
+                if filename:
+                    self.ctx.info("The '{}' command output saved to {}".format(cmd, filename))
 
                 if self.ctx.phase == "Pre-Upgrade":
                     self.ctx.save_data("isis_neighbors", isis_neighbor_info)
-                    if full_path:
+                    if filename:
                         # store the full_path to command output under the cmd key
-                        self.ctx.save_data(cmd, full_path)
+                        self.ctx.save_data(cmd, filename)
 
             else:
                 self.ctx.info("No ISIS protocol instance active")
