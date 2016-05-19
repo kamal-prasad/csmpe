@@ -74,8 +74,8 @@ class Host(object):
 @delegate("_csm", ("post_status",), ("custom_commands", "success", "operation_id", "server_repository_url",
                                      "software_packages", "active_cli", "inactive_cli", "committed_cli", "hostname",
                                      "log_directory", "pre_migrate_config_filename", "migration_directory",
-                                     "post_migrate_config_handling_option", "server", "host"))
-@delegate("_connection", ("connect", "disconnect", "reconnect", "discovery", "send", "run_fsm"),
+                                     "post_migrate_config_handling_option", "get_server", "get_host"))
+@delegate("_connection", ("connect", "disconnect", "reconnect", "discovery", "send", "run_fsm", "reload"),
           ("family", "prompt", "os_type", "os_version"))
 class PluginContext(object):
     """ This is a class passed to the constructor during plugin instantiation.

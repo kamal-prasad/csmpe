@@ -31,7 +31,6 @@
 import re
 
 from csmpe.plugins import CSMPlugin
-from csmpe.csm_pm import CSMPluginManager
 from condoor.controllers.protocols.base import PASSWORD_PROMPT, USERNAME_PROMPT, PERMISSION_DENIED, \
                                                AUTH_FAILED, RESET_BY_PEER, SET_USERNAME, SET_PASSWORD, \
                                                PASSWORD_OK, PRESS_RETURN,UNABLE_TO_CONNECT
@@ -40,9 +39,8 @@ from condoor.exceptions import ConnectionError, ConnectionAuthenticationError
 
 from csmpe.context import PluginError
 
-from horizon.plugins.cmd_capture import CmdCapturePlugin
-from horizon.plugin_lib import wait_for_reload, get_package, wait_for_final_band
-from pexpect import TIMEOUT, EOF
+from csmpe.core_plugins.csm_custom_commands_capture.plugin import Plugin as CmdCapturePlugin
+from migration_lib import wait_for_final_band
 
 XR_PROMPT = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
 
@@ -128,10 +126,12 @@ class Plugin(CSMPlugin):
             ctx.ctrl.sendline(connection_param.password)
             return True
 
+        TIMEOUT = self.ctx.TIMEOUT
+
         events = [ESCAPE_CHAR, PASSWORD_OK, SET_USERNAME, SET_PASSWORD, USERNAME_PROMPT, PASSWORD_PROMPT,
                   XR_PROMPT, PRESS_RETURN, UNABLE_TO_CONNECT,
                   CONNECTION_REFUSED, RESET_BY_PEER, PERMISSION_DENIED,
-                  AUTH_FAILED, TIMEOUT, EOF]
+                  AUTH_FAILED, TIMEOUT]
 
         transitions = [
             (ESCAPE_CHAR, [0, 1], 1, None, 20),
@@ -183,7 +183,7 @@ class Plugin(CSMPlugin):
         self._configure_authentication(host)
 
         self.ctx.info("Waiting for all nodes to come to FINAL Band.")
-        if wait_for_final_band(device):
+        if wait_for_final_band(self.ctx):
             self.ctx.info("All nodes are in FINAL Band.")
         else:
             self.ctx.info("Warning: Not all nodes went to FINAL Band.")
@@ -193,7 +193,7 @@ class Plugin(CSMPlugin):
     def run(self):
 
         try:
-            host = self.ctx.host
+            host = self.ctx.get_host
         except AttributeError:
             self.ctx.error("No host selected.")
 
@@ -201,15 +201,16 @@ class Plugin(CSMPlugin):
             self.ctx.error("No host selected.")
 
         self.ctx.info("Run migration script to set boot mode and image path in device")
-        MigratePlugin._run_migration_script(manager, device)
+        self._run_migration_script()
 
         self.ctx.info("Reload device to boot eXR")
-        MigratePlugin._reload_all(manager, device)
+        self._reload_all(host)
 
         try:
-            manager.csm.custom_commands = ["show platform"]
-            CmdCapturePlugin.start(manager, device)
-        except Exception as e:
-            self.ctx.info(str(type(e)) + " when trying to capture 'show platform'.")
+            self.ctx.custom_commands = ["show platform"]
+            cmd_capture_plugin = CmdCapturePlugin(self.ctx)
+            cmd_capture_plugin.run()
+        except PluginError as e:
+            self.ctx.info("Failed to capture 'show platform' - ({}): {}".format(e.errno, e.strerror))
 
         return True

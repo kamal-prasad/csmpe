@@ -33,29 +33,31 @@ import subprocess
 import pexpect
 
 from csmpe.plugins import CSMPlugin
-from csmpe.csm_pm import CSMPluginManager
-from csmpe.core_plugins.csm_install_operations.install import parse_xr_show_platform
+from install import parse_xr_show_platform
 from csmpe.context import PluginError
 from utils import ServerType, is_empty, concatenate_dirs
-from csmpe.core_plugins.csm_install_operations.simple_server_helper import TFTPServer, FTPServer, SFTPServer
+from simple_server_helper import TFTPServer, FTPServer, SFTPServer
+from csmpe.core_plugins.csm_node_status_check.ios_xr.plugin import Plugin as NodeStatusPlugin
+from add import Plugin as InstallAddPlugin
+from activate import Plugin as InstallActivatePlugin
+from commit import Plugin as InstallCommitPlugin
 
 MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.3"
+RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU = "6.1.1"
 
 NOX_64_BINARY = "nox-linux-64.bin"
 # NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
-NOX_FOR_MAC = "nox-mac64"
+# NOX_FOR_MAC = "nox-mac64"
 
 TIMEOUT_FOR_COPY_CONFIG = 3600
 TIMEOUT_FOR_COPY_ISO = 960
 TIMEOUT_FOR_FPD_UPGRADE = 9600
 
-ISO_FULL_IMAGE_NAME = "asr9k-full-x64.iso"
-ISO_MINI_IMAGE_NAME = "asr9k-mini-x64.iso"
 ISO_LOCATION = "harddiskb:/"
 
-ROUTEPROCESSOR_RE = '(\d+/RS??P\d(?:/CPU\d*)?)'
+# ROUTEPROCESSOR_RE = '(\d+/RS??P\d(?:/CPU\d*)?)'
 # LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
-SUPPORTED_CARDS = ['4X100', '8X100', '12X100']
+# SUPPORTED_CARDS = ['4X100', '8X100', '12X100']
 NODE = '(\d+/(?:RS?P)?\d+/CPU\d+)'
 
 FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw', 'fpga8', 'fclnxfw', 'fcfsbl'])
@@ -71,6 +73,11 @@ CONVERTED_ADMIN_XR_CONFIG_IN_CSM = "admin.iox"
 XR_CONFIG_ON_DEVICE = "iosxr.cfg"
 ADMIN_CAL_CONFIG_ON_DEVICE = "admin_calvados.cfg"
 ADMIN_XR_CONFIG_ON_DEVICE = "admin_iosxr.cfg"
+                   # RSP/RP
+SUPPORTED_CARDS = ["ASR-9922-RP-SE", "A99-RP2-SE", "A9K-RSP880-SE",
+                   # LC
+                   "A9K-8X100GE-L-SE", "A9K-8X100GE-SE", "A99-8X100GE-SE", "A99-8X100GE-CM", "A9K-8X100GE-CM",
+                   "A9K-4X100GE-SE", "A99-12x100GE", "A9K-4X100GE-TR", "A99-8X100GE-TR", "A9K-8X100GE-TR"]
 
 class Plugin(CSMPlugin):
     """
@@ -102,9 +109,9 @@ class Plugin(CSMPlugin):
             self.ctx.error("Failed to ping server repository {} on device." +
                            "Please check session.log.".format(repo_ip.group(1)))
 
-    def _get_iosxr_run_nodes(self):
-        """Get names of all RSP's, RP's and all tomahawk Linecards that are in IOS-XR state"""
-        iosxr_run_nodes = []
+    def _get_supported_iosxr_run_nodes(self):
+        """Get names of all RSP's, RP's and Linecards in IOS-XR RUN state that are supported for migration."""
+        supported_iosxr_run_nodes = []
         cmd = "show platform"
         output = self.ctx.send(cmd)
         file_name = self.ctx.save_to_file(cmd, output)
@@ -113,21 +120,14 @@ class Plugin(CSMPlugin):
 
         inventory = parse_xr_show_platform(output)
         node_pattern = re.compile(NODE)
-        rp_pattern = re.compile(ROUTEPROCESSOR_RE)
         for key, value in inventory.items():
             if node_pattern.match(key):
-                # If this is RSP/RP
-                if rp_pattern.match(key):
-                    iosxr_run_nodes.append(key)
-                # If this is line card
-                else:
-                    if value['state'] == 'IOS XR RUN':
-                        for card in SUPPORTED_CARDS:
-                            if card in value['type']:
-                                iosxr_run_nodes.append(key)
-                                break
-
-        return iosxr_run_nodes
+                if value['state'] == 'IOS XR RUN':
+                    for card in SUPPORTED_CARDS:
+                        if card in value['type']:
+                            supported_iosxr_run_nodes.append(key)
+                            break
+        return supported_iosxr_run_nodes
 
     def _all_configs_supported(self, nox_output):
         """Check text output from running NoX on system. Only return True if all configs are supported by eXR."""
@@ -509,7 +509,7 @@ class Plugin(CSMPlugin):
 
         return subtype_to_locations_need_upgrade
 
-    def _ensure_updated_fpd(self, packages, iosxr_run_nodes):
+    def _ensure_updated_fpd(self, packages, iosxr_run_nodes, version):
         """
         Upgrade FPD's if needed.
         Steps:
@@ -527,7 +527,8 @@ class Plugin(CSMPlugin):
 
         :param packages: all user selected packages from scheduling the Pre-Migrate
         :param iosxr_run_nodes: the list of string nodes names we get from running
-                                PreMigratePlugin._get_iosxr_run_nodes
+                                self._get_supported_iosxr_run_nodes()
+        :param version: the current version of software. i.e., "5.3.3"
         :return: True if no error occurred.
         """
 
@@ -539,9 +540,7 @@ class Plugin(CSMPlugin):
         if not match:
             self.ctx.error("No FPD package is active on device. Please install the FPD package on device first.")
 
-        match = re.search("6\.[^0]\.[^0].*", self.ctx.os_version)
-
-        if self.ctx.os_version
+        if version < RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU:
 
             self.ctx.info("Checking if the FPD SMU has been installed...")
             pie_packages = []
@@ -562,10 +561,9 @@ class Plugin(CSMPlugin):
             if match:
                 self.ctx.info("The selected FPD SMU {} is found already active on device.".format(pie_packages[0]))
             else:
-                plugin_manager = CSMPluginManager(self.ctx)
-                self._run_install_action_plugin(plugin_manager, "Add", "Install Add Plugin")
-                self._run_install_action_plugin(plugin_manager, "Activate", "Install Activate Plugin")
-                self._run_install_action_plugin(plugin_manager, "Commit", "Install Commit Plugin")
+                self._run_install_action_plugin(InstallAddPlugin, "add")
+                self._run_install_action_plugin(InstallActivatePlugin, "activate")
+                self._run_install_action_plugin(InstallCommitPlugin, "commit")
 
         # check for the FPD version, if FPD needs upgrade,
         self.ctx.info("Checking FPD versions...")
@@ -579,19 +577,18 @@ class Plugin(CSMPlugin):
 
         return True
 
-    def _run_install_action_plugin(self, plugin_manager, install_phase, install_action_name):
+    def _run_install_action_plugin(self, plugin_class, plugin_action):
         """Instantiate other install actions(install add, activate and commit) on same given packages"""
-        self.ctx.info("FPD upgrade - install {} the FPD SMU...".format(install_phase.lower()))
+        self.ctx.info("FPD upgrade - install {} the FPD SMU...".format(plugin_action))
         try:
-            plugin_manager.set_phase_filter(install_phase)
-            plugin_manager.set_name_filter(install_action_name)
-            plugin_manager.dispatch("run")
+            install_plugin = plugin_class(self.ctx)
+            install_plugin.run()
         except PluginError as e:
-            self.ctx.error("Failed to install {} the FPD SMU - ({}): {}".format(install_phase.lower(),
+            self.ctx.error("Failed to install {} the FPD SMU - ({}): {}".format(plugin_action,
                                                                                 e.errno, e.strerror))
         except AttributeError:
             self.ctx.error("Failed to install {} the FPD SMU. Please check session.log for details of failure.".format(
-                install_phase.lower())
+                plugin_action)
             )
 
     def _upgrade_all_fpds(self, subtype_to_locations_need_upgrade):
@@ -864,7 +861,7 @@ class Plugin(CSMPlugin):
             pass
 
         try:
-            server = self.ctx.server
+            server = self.ctx.get_server
         except AttributeError:
             self.ctx.error("No server repository selected")
 
@@ -885,29 +882,36 @@ class Plugin(CSMPlugin):
         if self.ctx.os_type != "XR":
             self.ctx.error('Device is not running ASR9K Classic XR. Migration action aborted.')
 
-        if self.ctx.os_version < MINIMUM_RELEASE_VERSION_FOR_MIGRATION:
+        match_version = re.search("(\d\.\d\.\d).*", self.ctx.os_version)
+
+        if not match_version:
+            self.ctx.error("Bad os_version.")
+
+        version = match_version.group(1)
+
+        if version < MINIMUM_RELEASE_VERSION_FOR_MIGRATION:
             self.ctx.error("The minimal release version required for migration is 5.3.3. " +
-                          "Please upgrade to at lease R5.3.3 before scheduling migration.")
+                           "Please upgrade to at lease R5.3.3 before scheduling migration.")
 
         self._ping_repository_check(server_repo_url)
-
         try:
-            plugin_manager = CSMPluginManager(self.ctx)
-            plugin_manager.set_phase_filter("Pre-Upgrade")
-            plugin_manager.set_name_filter("Node Status Check Plugin")
-            plugin_manager.dispatch("run")
+            node_status_plugin = NodeStatusPlugin(self.ctx)
+            node_status_plugin.run()
         except PluginError:
             self.ctx.error("Not all nodes are in valid states. Pre-Migrate aborted. " +
                            "Please check session.log to trouble-shoot.")
 
-        iosxr_run_nodes = self._get_iosxr_run_nodes()
+        iosxr_run_nodes = self._get_supported_iosxr_run_nodes()
+
+        if len(iosxr_run_nodes) == 0:
+            self.ctx.error("No RSP/RP or Linecard on the device is supported for migration to ASR9K-X64.")
 
         self.ctx.info("Resizing eUSB partition.")
         self._resize_eusb()
 
-        # nox_to_use = self.ctx.migration_directory + self._find_nox_to_use()
+        nox_to_use = self.ctx.migration_directory + self._find_nox_to_use()
 
-        nox_to_use = self.ctx.migration_directory + NOX_FOR_MAC
+        # nox_to_use = self.ctx.migration_directory + NOX_FOR_MAC
 
         if not os.path.isfile(nox_to_use):
             self.ctx.error("The configuration conversion tool {} is missing. ".format(nox_to_use) +
@@ -919,6 +923,6 @@ class Plugin(CSMPlugin):
         self.ctx.info("Copying the eXR ISO image from server repository to device.")
         self._copy_iso_to_device(server, packages, server_repo_url)
 
-        #self._ensure_updated_fpd(packages, iosxr_run_nodes)
+        self._ensure_updated_fpd(packages, iosxr_run_nodes, version)
 
         return True
