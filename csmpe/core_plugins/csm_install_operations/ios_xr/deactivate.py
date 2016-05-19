@@ -52,7 +52,7 @@ class Plugin(CSMPlugin):
         packages_to_deactivate = pkgs - installed_inact
 
         if packages_to_deactivate:
-            packages_to_deactivate = pkgs & installed_act  # packages to be deactivated and installed active packages
+            packages_to_deactivate = packages_to_deactivate & installed_act  # packages to be deactivated and installed active packages
             if not packages_to_deactivate:
                 to_deactivate = " ".join(map(str, pkgs))
 

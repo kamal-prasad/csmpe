@@ -28,7 +28,18 @@ import re
 
 # from documentation:
 # http://www.cisco.com/c/en/us/td/docs/routers/asr9000/software/asr9k_r5-3/sysman/configuration/guide/b-sysman-cg-53xasr9k/b-sysman-cg-53xasr9k_chapter_0100.html#con_57141
-platforms = ["asr9k", "hfr", "c12k"]
+
+"""
+For example,
+disk0:asr9k-px-5.3.3.CSCuz33376-1.0.0
+
+package_type = None
+version_re = 5.3.3
+smu_re = CSCuz33376
+sp_re = None
+subversion_re = 1.0.0
+"""
+platforms = ["asr9k", "hfr"]
 package_types = "mini mcast mgbl mpls k9sec diags fpd doc bng li optic services services-infa " \
                 "infra-test video asr9000v asr901 asr903".split()
 version_re = re.compile("(?P<VERSION>\d+\.\d+\.\d+(\.\d+\w+)?)")
@@ -59,10 +70,12 @@ class SoftwarePackage(object):
 
     @property
     def architecture(self):
-        if "-px-" in self.package_name:
+        # asr9k-mcast-px.pie-5.3.2 (external name)
+        # disk0:asr9k-mcast-px-5.3.2 (internal name)
+        # asr9k-px-5.3.3.CSCuy81837.pie (external name)
+        # disk0:asr9k-px-5.3.3.CSCuy81837-1.0.0 (internal name)
+        if "-px" in self.package_name:
             return "px"
-        elif "-p-" in self.package_name:
-            return "p"
         else:
             return None
 
@@ -98,13 +111,10 @@ class SoftwarePackage(object):
             self.version == other.version and \
             self.smu == other.smu and \
             self.sp == other.sp and \
-            self.subversion == other.subversion
+                 (self.subversion == other.subversion if self.subversion and other.subversion else True)
 
         if result:
-            """
-            Append the disk location to the package name
-            FIXME: CSM should probably include the disk location in the package name
-            """
+            # Append the disk location to the package name
             if ":" in self.package_name:
                 disk = self.package_name.split(':')[0] + ":"
                 if not other.package_name.startswith(disk):

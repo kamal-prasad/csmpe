@@ -50,9 +50,19 @@ class Plugin(CSMPlugin):
         installed_act = SoftwarePackage.from_show_cmd(self.ctx.send("admin show install active summary"))
 
         # Packages to activate but not already active
-        packages_to_activate = pkgs - installed_act
-        if packages_to_activate:
-            packages_to_activate = pkgs & installed_inact  # packages to be deactivated and installed active packages
+        pkgs = pkgs - installed_act
+        if pkgs:
+            packages_to_activate = set()
+            # After the packages are considered equal according to SoftwarePackage.__eq__(),
+            # Use the package name in the inactive area.  It is possible that the package
+            # name given for Activation may be an external filename like below.
+            # asr9k-px-5.3.3.CSCuy81837.pie to disk0:asr9k-px-5.3.3.CSCuy81837-1.0.0
+            # asr9k-mcast-px.pie-5.3.3 to disk0:asr9k-mcast-px-5.3.3
+            for inactive_pkg in installed_inact:
+                for pkg in pkgs:
+                    if pkg == inactive_pkg:
+                        packages_to_activate.add(inactive_pkg)
+
             if not packages_to_activate:
                 to_deactivate = " ".join(map(str, pkgs))
 

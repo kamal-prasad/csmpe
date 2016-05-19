@@ -43,18 +43,21 @@ from csmpe.csm_pm import CSMPluginManager
 from csmpe.csm_pm import install_phases
 
 _PLATFORMS = ["ASR9K", "NCS6K", "CRS"]
+_OS = ["IOS", "XR", "eXR", "XR"]
 
 
 def print_plugin_info(pm, detail=False, brief=False):
     for plugin, details in pm.plugins.items():
         platforms = ", ".join(details['platforms'])
-        phases = ", ".join(details['phases'])
+        phases = ", ".join(details['phases']) if bool(details['phases']) else "Any"
+        os = ", ".join(details['os']) if bool(details['os']) else "Any"
         if brief:
-            click.echo("[{}] [{}] {}".format(platforms, phases, details['name']))
+            click.echo("[{}] [{}] [{}] {}".format(platforms, phases, os, details['name']))
         else:
             click.echo("Name: {}".format(details['name']))
             click.echo("Platforms: {}".format(platforms))
             click.echo("Phases: {}".format(phases))
+            click.echo("OS: {}".format(os))
             description = "Description: {}\n".format(details['description'])
             description = "\n".join(textwrap.wrap(description, 60))
             click.echo(description)
@@ -101,20 +104,26 @@ def cli():
               help="Supported platform.")
 @click.option("--phase", type=click.Choice(install_phases),
               help="Supported phase.")
+@click.option("--os", type=click.Choice(_OS),
+              help="Supported OS.")
 @click.option("--detail", is_flag=True,
               help="Display detailed information about installed plugins.")
 @click.option("--brief", is_flag=True,
               help="Display brief information about installed plugins.")
-def plugin_list(platform, phase, detail, brief):
+def plugin_list(platform, phase, os, detail, brief):
     pm = CSMPluginManager(None, invoke_on_load=False)
     pm.set_phase_filter(phase)
     pm.set_platform_filter(platform)
+    pm.set_os_filter(os)
+    pm.refresh(invoke_on_load=False)
 
     click.echo("List of installed plugins:\n")
     if platform:
         click.echo("Plugins for platform: {}".format(platform))
     if phase:
         click.echo("Plugins for phase: {}".format(phase))
+    if os:
+        click.echo("Plugins for os: {}".format(os))
 
     print_plugin_info(pm, detail, brief)
 
