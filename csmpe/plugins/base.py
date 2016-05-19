@@ -47,15 +47,15 @@ class CSMPlugin(object):
     #: Empty set means that plugin will NEVER be executed. The currently supported values are:
     #: *Pre-Upgrade*, *Pre-Add*, *Add*, *Pre-Activate*, *Pre-Deactivate*, *Deactivate*,
     #: *Remove*, *Commit*
-    phases = {()}
+    phases = set()
 
     #: The set of strings representing the supported platforms by the plugin. Empty set means ANY platform.
     #: The currently supported values are: *ASR9K*, *CRS*, *NCS6K*
-    platforms = {()}
+    platforms = set()
 
     #: The set of operating system type strings. The supported values are: *IOS*, *XR*, *eXR*, *XE*.
     #: Empty set means plugin will be executed regardless of the detected operating system.
-    os = {()}
+    os = set()
 
     def __init__(self, ctx):
         """ This is a constructor of a plugin object. The constructor can be overridden by the plugin code.

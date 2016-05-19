@@ -52,7 +52,14 @@ class CSMPluginManager(object):
             self._phase = self._ctx.phase
         except AttributeError:
             self._phase = None
+        try:
+            self._os = self._ctx.os_type
+        except AttributeError:
+            self._os = None
 
+        self.refresh(invoke_on_load=invoke_on_load)
+
+    def refresh(self, invoke_on_load=True):
         self._name = None
         self._manager = DispatchExtensionManager(
             "csm.plugin",
@@ -77,6 +84,7 @@ class CSMPluginManager(object):
                 'description': ext.plugin.__doc__,
                 'phases': ext.plugin.phases,
                 'platforms': ext.plugin.platforms,
+                'os': ext.plugin.os
             }
 
     def _filter_func(self, ext, *args, **kwargs):
@@ -85,6 +93,10 @@ class CSMPluginManager(object):
         if self._phase and self._phase not in ext.plugin.phases:
             return False
         if self._name and ext.plugin.name not in self._name:
+            return False
+        # if detected os is set and plugin os set is not empty and detected os is not in plugin os then
+        # plugin does not match
+        if self._os and bool(ext.plugin.os) and self._os not in ext.plugin.os:
             return False
         return True
 
@@ -102,11 +114,13 @@ class CSMPluginManager(object):
         self._ctx.warning("Exception: {}".format(exc))
 
     def _check_plugin(self, ext, *args, **kwargs):
-        attributes = ['name', 'phases', 'platforms']
+        attributes = ['name', 'phases', 'platforms', 'os']
         plugin = ext.plugin
         for attribute in attributes:
             if not hasattr(plugin, attribute):
-                self._ctx.warning("Attribute '{}' missing in plugin class".format(attribute))
+                self._ctx.warning("Attribute '{}' missing in plugin class: {}".format(
+                    attribute, ext.entry_point.module_name))
+                return False
         return self._filter_func(ext)
 
     def get_package_metadata(self, name):
@@ -158,6 +172,9 @@ class CSMPluginManager(object):
     def set_phase_filter(self, phase):
         self._phase = phase
 
+    def set_os_filter(self, os):
+        self._os = os
+
     def set_name_filter(self, name):
         if isinstance(name, str) or isinstance(name, unicode):
             self._name = {name}
@@ -167,3 +184,4 @@ class CSMPluginManager(object):
             self._name = name
         else:
             self._name = None
+
