@@ -186,4 +186,3 @@ class CSMPluginManager(object):
             self._name = name
         else:
             self._name = None
-
