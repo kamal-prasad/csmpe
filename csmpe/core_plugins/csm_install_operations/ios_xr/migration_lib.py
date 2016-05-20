@@ -5,6 +5,7 @@ from pre_migrate import SUPPORTED_CARDS
 
 NODE = "(\d+/(?:RS?P)?\d+)"
 
+
 def parse_exr_admin_show_platform(output):
     """Get all RSP/RP/LC string node names matched with the card type."""
     inventory = {}
@@ -20,6 +21,7 @@ def parse_exr_admin_show_platform(output):
             print "node_type = *{}*".format(node_type)
             inventory[node] = node_type
     return inventory
+
 
 def get_all_supported_nodes(ctx):
     """Get the list of string node names(all available RSP/RP/LC) that are supported for migration."""
@@ -41,7 +43,7 @@ def get_all_supported_nodes(ctx):
 def wait_for_final_band(ctx):
     """This is for ASR9K eXR. Wait for all present nodes to come to FINAL Band."""
     supported_nodes = get_all_supported_nodes(ctx)
-     # Wait for all nodes to Final Band
+    # Wait for all nodes to Final Band
     timeout = 1080
     poll_time = 20
     time_waited = 0
@@ -56,7 +58,7 @@ def wait_for_final_band(ctx):
         output = ctx.send(cmd)
         all_nodes_present = True
         for node in supported_nodes:
-            if not node in output:
+            if node not in output:
                 all_nodes_present = False
                 break
         if all_nodes_present and check_sw_status(output):

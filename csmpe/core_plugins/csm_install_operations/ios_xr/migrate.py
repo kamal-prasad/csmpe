@@ -25,31 +25,26 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-
-
-
 import re
 
 from csmpe.plugins import CSMPlugin
+from csmpe.context import PluginError
+from csmpe.core_plugins.csm_custom_commands_capture.plugin import Plugin as CmdCapturePlugin
 from condoor.controllers.protocols.base import PASSWORD_PROMPT, USERNAME_PROMPT, PERMISSION_DENIED, \
                                                AUTH_FAILED, RESET_BY_PEER, SET_USERNAME, SET_PASSWORD, \
-                                               PASSWORD_OK, PRESS_RETURN,UNABLE_TO_CONNECT
+                                               PASSWORD_OK, PRESS_RETURN, UNABLE_TO_CONNECT
 from condoor.controllers.protocols.telnet import ESCAPE_CHAR, CONNECTION_REFUSED
 from condoor.exceptions import ConnectionError, ConnectionAuthenticationError
-
-from csmpe.context import PluginError
-
-from csmpe.core_plugins.csm_custom_commands_capture.plugin import Plugin as CmdCapturePlugin
 from migration_lib import wait_for_final_band
 
 XR_PROMPT = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
-
 
 SCRIPT_BACKUP_CONFIG = "harddiskb:/classic.cfg"
 SCRIPT_BACKUP_ADMIN_CONFIG = "harddiskb:/admin.cfg"
 
 MIGRATION_TIME_OUT = 3600
 NODES_COME_UP_TIME_OUT = 3600
+
 
 class Plugin(CSMPlugin):
     """

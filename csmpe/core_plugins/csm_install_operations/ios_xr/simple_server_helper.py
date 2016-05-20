@@ -33,13 +33,14 @@ from csmpe.core_plugins.csm_install_operations.ios_xr.utils import concatenate_d
 
 def get_server_impl(server):
     if server.server_type == ServerType.TFTP_SERVER:
-        return TFTPServer(server) 
+        return TFTPServer(server)
     elif server.server_type == ServerType.FTP_SERVER:
         return FTPServer(server)
     elif server.server_type == ServerType.SFTP_SERVER:
         return SFTPServer(server)
     else:
         return None
+
 
 class ServerImpl(object):
     def __init__(self, server):
@@ -54,6 +55,7 @@ class ServerImpl(object):
     def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
         raise NotImplementedError("Children must override upload_file")
 
+
 class TFTPServer(ServerImpl):
     def __init__(self, server):
         ServerImpl.__init__(self, server)
@@ -63,23 +65,24 @@ class TFTPServer(ServerImpl):
             path = self.server.server_directory
         else:
             path = (self.server.server_directory + os.sep + sub_directory)
-            
+
         shutil.copy(source_file_path, path + os.sep + dest_filename)
+
 
 class FTPServer(ServerImpl):
     def __init__(self, server):
         ServerImpl.__init__(self, server)
-        
+
     def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
         try:
             file = open(source_file_path, 'rb')
-            
+
             ftp = ftplib.FTP(self.server.server_url, user=self.server.username, passwd=self.server.password)
-                   
+
             remote_directory = concatenate_dirs(self.server.server_directory, sub_directory)
             if len(remote_directory) > 0:
                 ftp.cwd(remote_directory)
-                
+
             # default block size is 8912
             if callback:
                 ftp.storbinary('STOR ' + dest_filename, file, callback=callback)
@@ -92,10 +95,11 @@ class FTPServer(ServerImpl):
             if file is not None:
                 file.close()
 
+
 class SFTPServer(ServerImpl):
     def __init__(self, server):
         ServerImpl.__init__(self, server)
-        
+
     def upload_file(self, source_file_path, dest_filename, sub_directory=None, callback=None):
         sftp_module = import_module('pysftp')
 
@@ -107,4 +111,3 @@ class SFTPServer(ServerImpl):
                 sftp.put(source_file_path, remotepath=remote_directory + '/' + dest_filename, callback=callback)
             else:
                 sftp.put(source_file_path, remotepath=remote_directory + '/' + dest_filename)
-

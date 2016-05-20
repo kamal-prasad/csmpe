@@ -111,7 +111,7 @@ class SoftwarePackage(object):
             self.version == other.version and \
             self.smu == other.smu and \
             self.sp == other.sp and \
-                 (self.subversion == other.subversion if self.subversion and other.subversion else True)
+            (self.subversion == other.subversion if self.subversion and other.subversion else True)
 
         if result:
             # Append the disk location to the package name

@@ -1,11 +1,13 @@
 import sys
 import importlib
 
+
 class ServerType:
     TFTP_SERVER = 'TFTP'
     FTP_SERVER = 'FTP'
     SFTP_SERVER = 'SFTP'
     LOCAL_SERVER = 'LOCAL'
+
 
 def import_module(module, path=None):
     if path is not None:
@@ -14,6 +16,7 @@ def import_module(module, path=None):
         return importlib.import_module(module)
     except:
         return None
+
 
 def concatenate_dirs(dir1, dir2):
     """
@@ -35,7 +38,7 @@ def is_empty(obj):
        s = [], s = None, s = '', s = '    ', s = 'None'
     """
     if isinstance(obj, str):
-        obj = obj.replace('None','').strip()
+        obj = obj.replace('None', '').strip()
 
     if obj:
         return False

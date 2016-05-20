@@ -59,6 +59,8 @@ ISO_LOCATION = "harddiskb:/"
 # LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
 # SUPPORTED_CARDS = ['4X100', '8X100', '12X100']
 NODE = '(\d+/(?:RS?P)?\d+/CPU\d+)'
+FAN = '\d+/FT\d+'
+PEM = '\d+/PT\d+'
 
 FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw', 'fpga8', 'fclnxfw', 'fcfsbl'])
 
@@ -73,11 +75,18 @@ CONVERTED_ADMIN_XR_CONFIG_IN_CSM = "admin.iox"
 XR_CONFIG_ON_DEVICE = "iosxr.cfg"
 ADMIN_CAL_CONFIG_ON_DEVICE = "admin_calvados.cfg"
 ADMIN_XR_CONFIG_ON_DEVICE = "admin_iosxr.cfg"
-                   # RSP/RP
+
+
+SUPPORTED_RP = ["ASR-9922-RP-SE", "A99-RP2-SE", "A9K-RSP880-SE"]
+SUPPORTED_FAN = ["ASR-9904-FAN", "ASR-9006-FAN-V2", "ASR-9010-FAN-V2",
+                 "ASR-9910-FAN", "ASR-9912-FAN", "ASR-9922-FAN-V2"]
+SUPPORTED_PEM = ["PWR-2KW-DC-V2", "PWR-3KW-AC-V2", "PWR-6KW-AC-V3", "PWR-4.4KW-DC-V3"]
+
+# RSP/RP and LC
 SUPPORTED_CARDS = ["ASR-9922-RP-SE", "A99-RP2-SE", "A9K-RSP880-SE",
-                   # LC
                    "A9K-8X100GE-L-SE", "A9K-8X100GE-SE", "A99-8X100GE-SE", "A99-8X100GE-CM", "A9K-8X100GE-CM",
                    "A9K-4X100GE-SE", "A99-12x100GE", "A9K-4X100GE-TR", "A99-8X100GE-TR", "A9K-8X100GE-TR"]
+
 
 class Plugin(CSMPlugin):
     """
@@ -97,6 +106,65 @@ class Plugin(CSMPlugin):
     platforms = {'ASR9K'}
     phases = {'Pre-Migrate'}
 
+    def _check_if_rp_fan_pem_supported(self):
+        """Check if all RSP/RP/FAN/PEM currently on device are supported for migration."""
+        cmd = "show platform"
+        output = self.ctx.send(cmd)
+        file_name = self.ctx.save_to_file(cmd, output)
+        if file_name is None:
+            self.ctx.warning("Unable to save '{}' output to file: {}".format(cmd, file_name))
+
+        inventory = parse_xr_show_platform(output)
+        node_pattern = re.compile(NODE)
+        fan_pattern = re.compile(FAN)
+        pem_pattern = re.compile(PEM)
+        for key, value in inventory.items():
+            rp_or_rsp = self._check_supported_card(key, node_pattern, value['type'], SUPPORTED_RP)
+            if not rp_or_rsp:
+                fan = self._check_supported_card(key, fan_pattern, value['type'], SUPPORTED_FAN)
+                if not fan:
+                    self._check_supported_card(key, pem_pattern, value['type'], SUPPORTED_PEM)
+
+        return True
+
+    def _check_supported_card(self, node_name, card_pattern, card_type, supported_type_list):
+        """
+        Check if a card (RSP/RP/FAN/PEM) is supported.
+        :param node_name: the name under "Node" column in output of CLI "show platform". i.e., "0/RSP0/CPU0"
+        :param card_pattern: the regex for either the node name of a RSP, RP, FAN or PEM
+        :param card_type: the pid under "Type" column in output of CLI "show platform". i.e., "A9K-RSP880-SE(Active)"
+        :param supported_type_list: the list of card types/pids that are supported for migration
+        :return: True if this node is indeed the asked card(RP/RSP/FAN/PEM) and it's confirmed that it's supported
+                    for migration.
+                False if this node is not the asked card(RP/RSP/FAN/PEM)
+                error out if this node is indeed the asked card(RP/RSP/FAN/PEM) and it is NOT supported for migration.
+        """
+        if card_pattern.match(node_name):
+            supported = False
+            for supported_type in supported_type_list:
+                if supported_type in card_type:
+                    supported = True
+                    break
+            if not supported:
+                self.ctx.error("The card type for {} is not supported for migration to ASR9K-X64.".format(node_name) +
+                               " Please check the user manuel under 'Help' on CSM Server for list of " +
+                               "supported hardware.")
+            return True
+        return False
+
+    def _get_supported_iosxr_run_nodes(self, inventory):
+        """Get names of all RSP's, RP's and Linecards in IOS-XR RUN state that are supported for migration."""
+        supported_iosxr_run_nodes = []
+        node_pattern = re.compile(NODE)
+        for key, value in inventory.items():
+            if node_pattern.match(key):
+                if value['state'] == 'IOS XR RUN':
+                    for card in SUPPORTED_CARDS:
+                        if card in value['type']:
+                            supported_iosxr_run_nodes.append(key)
+                            break
+        return supported_iosxr_run_nodes
+
     def _ping_repository_check(self, repo_url):
         """Test ping server repository ip from device"""
         repo_ip = re.search("[/@](\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/", repo_url)
@@ -108,26 +176,6 @@ class Plugin(CSMPlugin):
         if "100 percent" not in output:
             self.ctx.error("Failed to ping server repository {} on device." +
                            "Please check session.log.".format(repo_ip.group(1)))
-
-    def _get_supported_iosxr_run_nodes(self):
-        """Get names of all RSP's, RP's and Linecards in IOS-XR RUN state that are supported for migration."""
-        supported_iosxr_run_nodes = []
-        cmd = "show platform"
-        output = self.ctx.send(cmd)
-        file_name = self.ctx.save_to_file(cmd, output)
-        if file_name is None:
-            self.ctx.warning("Unable to save '{}' output to file: {}".format(cmd, file_name))
-
-        inventory = parse_xr_show_platform(output)
-        node_pattern = re.compile(NODE)
-        for key, value in inventory.items():
-            if node_pattern.match(key):
-                if value['state'] == 'IOS XR RUN':
-                    for card in SUPPORTED_CARDS:
-                        if card in value['type']:
-                            supported_iosxr_run_nodes.append(key)
-                            break
-        return supported_iosxr_run_nodes
 
     def _all_configs_supported(self, nox_output):
         """Check text output from running NoX on system. Only return True if all configs are supported by eXR."""
@@ -165,13 +213,13 @@ class Plugin(CSMPlugin):
                                                                    destfilenames[x]))
                 try:
                     tftp_server.upload_file(sourcefiles[x], destfilenames[x],
-                                            sub_directory= self.ctx._csm.install_job.server_directory)
+                                            sub_directory=self.ctx._csm.install_job.server_directory)
                 except:
                     self.ctx.error("Exception was thrown while " +
-                                  "copying file {} to {}/{}/{}.".format(sourcefiles[x],
-                                                                        server.server_directory,
-                                                                        self.ctx._csm.install_job.server_directory,
-                                                                        destfilenames[x]))
+                                   "copying file {} to {}/{}/{}.".format(sourcefiles[x],
+                                                                         server.server_directory,
+                                                                         self.ctx._csm.install_job.server_directory,
+                                                                         destfilenames[x]))
 
         elif server_type == ServerType.FTP_SERVER:
             ftp_server = FTPServer(server)
@@ -185,10 +233,10 @@ class Plugin(CSMPlugin):
                                            sub_directory=self.ctx._csm.install_job.server_directory)
                 except:
                     self.ctx.error("Exception was thrown while " +
-                                  "copying file {} to {}/{}/{}.".format(sourcefiles[x],
-                                                                        server.server_directory,
-                                                                        self.ctx._csm.install_job.server_directory,
-                                                                        destfilenames[x]))
+                                   "copying file {} to {}/{}/{}.".format(sourcefiles[x],
+                                                                         server.server_directory,
+                                                                         self.ctx._csm.install_job.server_directory,
+                                                                         destfilenames[x]))
         elif server_type == ServerType.SFTP_SERVER:
             sftp_server = SFTPServer(server)
             for x in range(0, len(sourcefiles)):
@@ -201,10 +249,10 @@ class Plugin(CSMPlugin):
                                             sub_directory=self.ctx._csm.install_job.server_directory)
                 except:
                     self.ctx.error("Exception was thrown while " +
-                                  "copying file {} to {}/{}/{}.".format(sourcefiles[x],
-                                                                        server.server_directory,
-                                                                        self.ctx._csm.install_job.server_directory,
-                                                                        destfilenames[x]))
+                                   "copying file {} to {}/{}/{}.".format(sourcefiles[x],
+                                                                         server.server_directory,
+                                                                         self.ctx._csm.install_job.server_directory,
+                                                                         destfilenames[x]))
         else:
             self.ctx.error("Pre-Migrate does not support {} server repository.".format(server_type))
 
@@ -374,8 +422,8 @@ class Plugin(CSMPlugin):
 
             if not self.ctx.run_fsm("Copy file from sftp to device", command, events, transitions, timeout=20):
                 self.ctx.error("Error copying {}/{} to {} on device".format(source_path,
-                                                                           source_filenames[x],
-                                                                           dest_files[x]))
+                                                                            source_filenames[x],
+                                                                            dest_files[x]))
 
             if self.ctx._connection._session_fd and (not self.ctx._connection._driver.ctrl._session.logfile_read):
                 self.ctx._connection._driver.ctrl._session.logfile_read = self.ctx._connection._session_fd
@@ -447,7 +495,7 @@ class Plugin(CSMPlugin):
 
             if self._all_configs_supported(nox_output):
                 self.ctx.info("Configuration {} was migrated successfully. ".format(filename) +
-                            "No unsupported configurations found.")
+                              "No unsupported configurations found.")
             else:
                 self._create_config_logs(os.path.join(fileloc, filename.split(".")[0] + ".csv"),
                                          supported_log_name, unsupported_log_name,
@@ -469,7 +517,7 @@ class Plugin(CSMPlugin):
         self.ctx.send("run", wait_for_string="#")
         output = self.ctx.send("ksh /pkg/bin/resize_eusb", wait_for_string="#")
         self.ctx.send("exit")
-        if not "eUSB partition completed." in output:
+        if "eUSB partition completed." not in output:
             self.ctx.error("eUSB partition failed. Please check session.log.")
         output = self.ctx.send("show media")
 
@@ -480,7 +528,7 @@ class Plugin(CSMPlugin):
 
         if eusb_size.group(1) < "1.0":
             self.ctx.error("/harddiskb:/ is smaller than 1 GB after running /pkg/bin/resize_eusb. " +
-                          "Please make sure that the device has either RP2 or RSP4.")
+                           "Please make sure that the device has either RP2 or RSP4.")
 
     def _check_fpd(self, iosxr_run_nodes):
         """
@@ -503,7 +551,7 @@ class Plugin(CSMPlugin):
             for match in match_iter:
                 if match.group(1) in iosxr_run_nodes:
                     if match.group(2) == "No":
-                        if not fpdtype in subtype_to_locations_need_upgrade:
+                        if fpdtype not in subtype_to_locations_need_upgrade:
                             subtype_to_locations_need_upgrade[fpdtype] = []
                         subtype_to_locations_need_upgrade[fpdtype].append(match.group(1))
 
@@ -901,7 +949,10 @@ class Plugin(CSMPlugin):
             self.ctx.error("Not all nodes are in valid states. Pre-Migrate aborted. " +
                            "Please check session.log to trouble-shoot.")
 
-        iosxr_run_nodes = self._get_supported_iosxr_run_nodes()
+        self.ctx.info("Check if all RSP/RP/FAN/PEM on device are supported for migration.")
+        inventory = self._check_if_rp_fan_pem_supported()
+
+        iosxr_run_nodes = self._get_supported_iosxr_run_nodes(inventory)
 
         if len(iosxr_run_nodes) == 0:
             self.ctx.error("No RSP/RP or Linecard on the device is supported for migration to ASR9K-X64.")

@@ -37,6 +37,7 @@ def log_install_errors(ctx, output):
         for line in errors:
             ctx.warning(line)
 
+
 def watch_operation(ctx, op_id=0):
         """
         Function to keep watch on progress of operation

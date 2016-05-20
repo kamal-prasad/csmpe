@@ -25,8 +25,6 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-
-
 import re
 import time
 
@@ -35,12 +33,13 @@ from condoor.exceptions import CommandTimeoutError, CommandSyntaxError
 from csmpe.context import PluginError
 from migration_lib import wait_for_final_band
 from csmpe.core_plugins.csm_custom_commands_capture.plugin import Plugin as CmdCapturePlugin
+from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
 from pre_migrate import XR_CONFIG_ON_DEVICE, ADMIN_CAL_CONFIG_ON_DEVICE, ADMIN_XR_CONFIG_ON_DEVICE
 
 TIMEOUT_FOR_COPY_CONFIG = 3600
 
-class Plugin(CSMPlugin):
 
+class Plugin(CSMPlugin):
     """
     A plugin for loading configurations and upgrading FPD's
     after the system migrated to ASR9K IOS-XR 64 bit(eXR).
@@ -322,3 +321,6 @@ class Plugin(CSMPlugin):
             cmd_capture_plugin.run()
         except PluginError as e:
             self.ctx.info("Failed to capture 'show platform' - ({}): {}".format(e.errno, e.strerror))
+
+        # Refresh package information
+        get_package(self.ctx)
