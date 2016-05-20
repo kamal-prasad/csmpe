@@ -36,8 +36,9 @@ from utils import get_filesystems
 class Plugin(CSMPlugin):
     """This plugin captures custom commands and stores in the log directory."""
     name = "Disk Space Check Plugin"
-    platforms = {'ASR9K'}
+    platforms = {'ASR9K', 'CRS'}
     phases = {'Pre-Add'}
+    os = {'XR'}
 
     def _get_pie_size(self, package_url):
         cmd = "admin show install pie-info " + package_url
