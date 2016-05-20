@@ -115,7 +115,7 @@ def plugin_list(platform, phase, os, detail, brief):
     pm.set_phase_filter(phase)
     pm.set_platform_filter(platform)
     pm.set_os_filter(os)
-    pm.refresh(invoke_on_load=False)
+    pm.load(invoke_on_load=False)
 
     click.echo("List of installed plugins:\n")
     if platform:

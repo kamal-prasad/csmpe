@@ -35,8 +35,9 @@ from utils import get_filesystems
 class Plugin(CSMPlugin):
     """This plugin checks if the filesystems are writable"""
     name = "Filesystem Check Plugin"
-    platforms = {'ASR9K'}
+    platforms = {'ASR9K', 'CRS'}
     phases = {'Pre-Upgrade'}
+    os = {'XR'}
 
     def _can_create_dir(self, filesystem):
 

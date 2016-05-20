@@ -24,34 +24,37 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
+import re
 from csmpe.plugins import CSMPlugin
 
 
 class Plugin(CSMPlugin):
-    """This plugin retrieves software information from the device."""
-    name = "Get Software Packages Plugin"
+    """This plugin checks system logs against any errors, traceback of crash information."""
+    name = "Core Error Check Plugin"
     platforms = {'ASR9K', 'CRS', 'NCS6K'}
-    phases = {'Get-Software-Packages'}
+    phases = {'Post-Upgrade'}
+
+    # matching any errors, core and traceback
+    _string_to_check_re = re.compile(
+        "^(.*(?:[Ee][Rr][Rr][Oo][Rr]|Core for pid|Traceback).*)$", re.MULTILINE
+    )
+
+    # TODO: Check log against
+    # "Version of existing saved configuration detected to be incompatible with the installed software"
+    # cfgmgr-rp[165]: %MGBL-CONFIG-4-VERSION : Version of existing saved configuration detected to be incompatible
+    # with the installed software. Configuration will be restored from an alternate source and may take
+    # longer than usual on this boot.
 
     def run(self):
-        get_package(self.ctx)
+        # FIXME: Consider optimization
+        # The log may be large
+        # Maybe better run sh logging | i "Error|error|ERROR|Traceback|Core for pid" directly on the device
+        cmd = "show logging last 500"
+        output = self.ctx.send(cmd, timeout=300)
 
+        file_name = self.ctx.save_to_file(cmd, output)
+        if file_name:
+            self.ctx.info("Device log saved to {}".format(file_name))
 
-def get_package(ctx):
-    if ctx.os_type == "XR":
-        if hasattr(ctx, 'active_cli'):
-            ctx.active_cli = ctx.send("admin show install active summary")
-        if hasattr(ctx, 'inactive_cli'):
-            ctx.inactive_cli = ctx.send("admin show install inactive summary")
-        if hasattr(ctx, 'committed_cli'):
-            ctx.committed_cli = ctx.send("admin show install committed summary")
-
-    if ctx.os_type == "eXR":
-        # eXR does not require the 'admin' keyword. In fact, using 'admin' shows
-        # only the admin package, not others.
-        if hasattr(ctx, 'active_cli'):
-            ctx.active_cli = ctx.send("show install active")
-        if hasattr(ctx.csm, 'inactive_cli'):
-            ctx.inactive_cli = ctx.send("show install inactive")
-        if hasattr(ctx, 'committed_cli'):
-            ctx.committed_cli = ctx.send("show install committed")
+        for match in re.finditer(self._string_to_check_re, output):
+            self.ctx.warning(match.group())

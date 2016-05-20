@@ -35,7 +35,8 @@ from stevedore.exception import NoMatches
 from context import PluginContext
 
 install_phases = ['Pre-Upgrade', 'Pre-Add', 'Add', 'Pre-Activate', 'Activate', 'Pre-Deactivate',
-                  'Deactivate', 'Pre-Remove', 'Remove', 'Commit']
+                  'Deactivate', 'Pre-Remove', 'Remove', 'Commit', 'Get-Software-Packages',
+                  'Pre-Migrate', 'Migrate', 'Post-Migrate']
 
 auto_pre_phases = ["Add", "Activate", "Deactivate"]
 
@@ -44,23 +45,23 @@ class CSMPluginManager(object):
 
     def __init__(self, ctx=None, invoke_on_load=True):
         self._ctx = PluginContext(ctx)
+        # The context contains device information after discovery phase
+        # There is no need to load plugins which does not match the family and os
         try:
             self._platform = self._ctx.family
         except AttributeError:
             self._platform = None
         try:
-            self._phase = self._ctx.phase
-        except AttributeError:
-            self._phase = None
-        try:
             self._os = self._ctx.os_type
         except AttributeError:
             self._os = None
 
-        self.refresh(invoke_on_load=invoke_on_load)
-
-    def refresh(self, invoke_on_load=True):
+        self._phase = None
         self._name = None
+
+        self.load(invoke_on_load=invoke_on_load)
+
+    def load(self, invoke_on_load=True):
         self._manager = DispatchExtensionManager(
             "csm.plugin",
             self._check_plugin,
@@ -143,9 +144,9 @@ class CSMPluginManager(object):
             return False
 
         results = []
-        if self._phase in auto_pre_phases:
-            current_phase = self._phase
-            phase = "Pre-{}".format(self._phase)
+        current_phase = self._ctx.phase
+        if self._ctx.phase in auto_pre_phases:
+            phase = "Pre-{}".format(self._ctx.phase)
             self.set_phase_filter(phase)
             self._ctx.info("Phase: {}".format(self._phase))
             try:
@@ -153,8 +154,8 @@ class CSMPluginManager(object):
             except NoMatches:
                 self._ctx.warning("No {} plugins found".format(phase))
             self._ctx.current_plugin = None
-            self.set_phase_filter(current_phase)
 
+        self.set_phase_filter(current_phase)
         self._ctx.info("Phase: {}".format(self._phase))
         try:
             results += self._manager.map_method(self._dispatch, func)
@@ -164,6 +165,7 @@ class CSMPluginManager(object):
 
         self._ctx.current_plugin = None
         self._ctx.success = True
+        self._ctx.info("CSM Plugin Manager finished")
         return results
 
     def set_platform_filter(self, platform):
@@ -184,4 +186,3 @@ class CSMPluginManager(object):
             self._name = name
         else:
             self._name = None
-

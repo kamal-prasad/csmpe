@@ -73,7 +73,6 @@ setup(
             '{} = csmpe.core_plugins.csm_config_capture.plugin:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_custom_commands_capture.plugin:Plugin'.format(uuid4()),
 
-
             '{} = csmpe.core_plugins.csm_failed_config_startup_check.ios_xr.plugin:Plugin'.format(uuid4()),
 
             '{} = csmpe.core_plugins.csm_check_config_filesystem.ios_xr.plugin:Plugin'.format(uuid4()),
@@ -82,6 +81,8 @@ setup(
             '{} = csmpe.core_plugins.csm_node_status_check.ios_xr.plugin_exr:Plugin'.format(uuid4()),
 
             '{} = csmpe.core_plugins.csm_redundancy_check.ios_xr.plugin:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_error_core_check.ios_xr.plugin:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_check_isis_neighbors.ios_xr.plugin:Plugin'.format(uuid4()),
 
             '{} = csmpe.core_plugins.csm_filesystem_check.ios_xr.disk_space_check:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_filesystem_check.ios_xr.filesystem_rw_check:Plugin'.format(uuid4()),
@@ -94,8 +95,6 @@ setup(
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.pre_migrate:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.migrate:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.post_migrate:Plugin'.format(uuid4()),
-
-            '{} = csmpe.core_plugins.csm_check_isis_neighbors.ios_xr.plugin:Plugin'.format(uuid4()),
         ],
     },
     classifiers=[
