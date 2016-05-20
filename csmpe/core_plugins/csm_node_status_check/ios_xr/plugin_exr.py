@@ -34,8 +34,9 @@ from csmpe.plugins import CSMPlugin
 class Plugin(CSMPlugin):
     """This plugin checks the states of all nodes"""
     name = "Node Status Check Plugin"
-    platforms = {'NCS6K'}
+    platforms = {'ASR9K', 'NCS6K'}
     phases = {'Pre-Upgrade', 'Post-Upgrade'}
+    os = {'eXR'}
 
     def _parse_show_platform(self, output):
         inventory = {}
@@ -50,7 +51,7 @@ class Plugin(CSMPlugin):
                 entry = {
                     'type': node_type,
                     'state': state,
-                    'admin_state':admin_state,
+                    'admin_state': admin_state,
                     'config_state': config_state
                 }
                 inventory[node] = entry
@@ -88,7 +89,12 @@ class Plugin(CSMPlugin):
         0/RSP0    A9K-RSP880-SE           OPERATIONAL   OPERATIONAL   NSHUT
         0/RSP1    A9K-RSP880-SE           POWERED_OFF   SW_INACTIVE   NSHUT
         """
-        output = self.ctx.send("admin show platform")
+
+        # FIXME: Break the command to 3 pieces as condoor currently cannot handle it.
+        self.ctx.send("admin")
+        output = self.ctx.send("show platform")
+        self.ctx.send("exit")
+
         inventory = self._parse_show_platform(output)
         valid_state = [
             'IOS XR RUN',

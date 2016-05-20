@@ -36,6 +36,7 @@ class Plugin(CSMPlugin):
     name = "Node Status Check Plugin"
     platforms = {'ASR9K', 'CRS'}
     phases = {'Pre-Upgrade', 'Post-Upgrade'}
+    os = {'XR'}
 
     def _parse_show_platform(self, output):
         inventory = {}
