@@ -51,7 +51,7 @@ def get_package(ctx):
         # only the admin package, not others.
         if hasattr(ctx, 'active_cli'):
             ctx.active_cli = ctx.send("show install active")
-        if hasattr(ctx.csm, 'inactive_cli'):
+        if hasattr(ctx, 'inactive_cli'):
             ctx.inactive_cli = ctx.send("show install inactive")
         if hasattr(ctx, 'committed_cli'):
             ctx.committed_cli = ctx.send("show install committed")
