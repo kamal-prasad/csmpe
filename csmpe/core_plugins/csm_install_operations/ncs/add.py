@@ -44,9 +44,6 @@ class Plugin(CSMPlugin):
             return
 
         packages = self.ctx.software_packages
-
-        # FOR NOW
-        packages = ['ncs6k-mpls.pkg-6.1.0.07I.DT_IMAGE', 'ncs6k-mcast.pkg-6.1.0.07I.DT_IMAGE', 'ncs6k-mini-x.iso-6.1.0.07I.DT_IMAGE']
         if packages is None:
             self.ctx.error("No package list provided")
             return
