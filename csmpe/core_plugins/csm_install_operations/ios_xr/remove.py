@@ -35,8 +35,9 @@ from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_packa
 class Plugin(CSMPlugin):
     """This plugin removes inactive packages from the device."""
     name = "Install Remove Plugin"
-    platforms = {'ASR9K'}
+    platforms = {'ASR9K', 'CRS'}
     phases = {'Remove'}
+    os = {'XR'}
 
     def run(self):
         packages = self.ctx.software_packages
@@ -59,8 +60,11 @@ class Plugin(CSMPlugin):
 
         self.ctx.info("Remove Package(s) Pending")
         self.ctx.post_status("Remove Package(s) Pending")
+
         install_add_remove(self.ctx, cmd)
+
         self.ctx.info("Package(s) Removed Successfully")
 
         # Refresh package information
         get_package(self.ctx)
+

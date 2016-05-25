@@ -34,17 +34,19 @@ from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_packa
 class Plugin(CSMPlugin):
     """This plugin adds packages from repository to the device."""
     name = "Install Add Plugin"
-    platforms = {'ASR9K'}
+    platforms = {'NCS6K'}
     phases = {'Add'}
 
     def run(self):
         server_repository_url = self.ctx.server_repository_url
-
         if server_repository_url is None:
             self.ctx.error("No repository provided")
             return
 
         packages = self.ctx.software_packages
+
+        # FOR NOW
+        packages = ['ncs6k-mpls.pkg-6.1.0.07I.DT_IMAGE', 'ncs6k-mcast.pkg-6.1.0.07I.DT_IMAGE', 'ncs6k-mini-x.iso-6.1.0.07I.DT_IMAGE']
         if packages is None:
             self.ctx.error("No package list provided")
             return
@@ -52,11 +54,12 @@ class Plugin(CSMPlugin):
         has_tar = False
 
         s_packages = " ".join([package for package in packages
-                               if '-vm' not in package and ('pie' in package or 'tar' in package)])
+                               if ('iso' in package or 'pkg' in package or 'smu' in package or 'tar' in package)])
+
         if 'tar' in s_packages:
             has_tar = True
 
-        cmd = "admin install add source {} {} async".format(server_repository_url, s_packages)
+        cmd = "install add source {} {}".format(server_repository_url, s_packages)
 
         self.ctx.info("Add Package(s) Pending")
         self.ctx.post_status("Add Package(s) Pending")

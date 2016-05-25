@@ -40,21 +40,23 @@ def log_install_errors(ctx, output):
 
 def watch_operation(ctx, op_id=0):
         """
-        Function to keep watch on progress of operation
-        and report KB downloaded.
+        RP/0/RP0/CPU0:Deploy#show install request
+        The install operation 17 is 30% complete
 
+        or
+
+        RP/0/RP0/CPU0:Deploy#show install request
+        No install operation in progress
+
+        When install is completed, the following message will be displayed
+        RP/0/RP0/CPU0:Deploy#May 24 22:25:43 Install operation 17 finished successfully
         """
-        no_install = r"There are no install requests in operation"
-        #  failed_oper = r"Install operation (\d+) failed"
-        op_progress = r"The operation is (\d+)% complete"
-        op_download = r"(.*)KB downloaded: Download in progress"
-        success = "Install operation {} completed successfully".format(op_id)
+        no_install = r"No install operation in progress"
+        op_progress = r"The install operation {} is (\d+)% complete".format(op_id)
+        success = "Install operation {} finished successfully".format(op_id)
 
-        cmd_show_install_request = "admin show install request"
-
+        cmd_show_install_request = "show install request"
         ctx.info("Watching the operation {} to complete".format(op_id))
-
-        propeller = itertools.cycle(["|", "/", "-", "\\", "|", "/", "-", "\\"])
 
         last_status = None
         finish = False
@@ -69,16 +71,10 @@ def watch_operation(ctx, op_id=0):
             message = ""
             output = ctx.send(cmd_show_install_request)
             if op_id in output:
-                # FIXME reconsider the logic here
                 result = re.search(op_progress, output)
                 if result:
                     status = result.group(0)
-                    message = "{} {}".format(propeller.next(), status)
-
-                result = re.search(op_download, output)
-                if result:
-                    status = result.group(0)
-                    message += "\r\n<br>{}".format(status)
+                    message = "{}".format(status)
 
                 if message != last_status:
                     ctx.post_status(message)
@@ -220,12 +216,39 @@ def watch_install(ctx, oper_id, cmd):
 
 
 def install_add_remove(ctx, cmd, has_tar=False):
-    message = "Waiting the operation to continue asynchronously"
-    ctx.info(message)
-    ctx.post_status(message)
+    """
+    Success Condition:
+    ADD:
+    install add source tftp://223.255.254.254/auto/tftpboot-users/alextang/ ncs6k-mpls.pkg-6.1.0.07I.DT_IMAGE
+    May 24 18:54:12 Install operation will continue in the background
+    RP/0/RP0/CPU0:Deploy#May 24 18:54:30 Install operation 12 finished successfully
+
+    REMOVE:
+    RP/0/RP0/CPU0:Deploy#install remove ncs6k-5.2.5.47I.CSCux97367-0.0.15.i
+    May 23 21:20:28 Install operation 2 started by root:
+      install remove ncs6k-5.2.5.47I.CSCux97367-0.0.15.i
+    May 23 21:20:28 Package list:
+    May 23 21:20:28     ncs6k-5.2.5.47I.CSCux97367-0.0.15.i
+    May 23 21:20:29 Install operation will continue in the background
+    RP/0/RP0/CPU0:Deploy#May 23 21:20:29 Install operation 2 finished successfully
+
+    Failed Condition:
+    RP/0/RSP0/CPU0:CORFU#install remove ncs6k-5.2.5.47I.CSCux97367-0.0.15.i
+    Mon May 23 22:57:45.078 UTC
+    May 23 22:57:46 Install operation 28 started by iox:
+      install remove ncs6k-5.2.5.47I.CSCux97367-0.0.15.i
+    May 23 22:57:46 Package list:
+    May 23 22:57:46     ncs6k-5.2.5.47I.CSCux97367-0.0.15.i
+    May 23 22:57:47 Install operation will continue in the background
+    RP/0/RSP0/CPU0:CORFU#May 23 22:57:48 Install operation 28 aborted
+    """
+
+    # message = "Waiting the operation to continue asynchronously"
+    # ctx.info(message)
+    # ctx.post_status(message)
 
     output = ctx.send(cmd, timeout=7200)
-    result = re.search('Install operation (\d+) \'', output)
+    result = re.search('Install operation (\d+)', output)
     if result:
         op_id = result.group(1)
         if has_tar is True:
@@ -236,11 +259,12 @@ def install_add_remove(ctx, cmd, has_tar=False):
         ctx.error("Operation failed")
         return  # for sake of clarity
 
-    op_success = "The install operation will continue asynchronously"
-    failed_oper = r'Install operation {} failed'.format(op_id)
+    op_success = "Install operation will continue in the background"
+    failed_oper = r'Install operation {} aborted'.format(op_id)
+
     if op_success in output:
         watch_operation(ctx, op_id=op_id)
-        output = ctx.send("admin show install log {} detail".format(op_id))
+        output = ctx.send("show install log {} detail".format(op_id))
         if re.search(failed_oper, output):
             log_install_errors(ctx, output)
             ctx.error("Operation {} failed".format(op_id))

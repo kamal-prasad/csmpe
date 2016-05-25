@@ -26,44 +26,44 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
+from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
 from install import install_add_remove
 from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
-    """This plugin adds packages from repository to the device."""
-    name = "Install Add Plugin"
-    platforms = {'ASR9K'}
-    phases = {'Add'}
+    """This plugin removes inactive packages from the device."""
+    name = "Install Remove Plugin"
+    platforms = {'NCS6K'}
+    phases = {'Remove'}
 
     def run(self):
-        server_repository_url = self.ctx.server_repository_url
-
-        if server_repository_url is None:
-            self.ctx.error("No repository provided")
-            return
-
         packages = self.ctx.software_packages
         if packages is None:
             self.ctx.error("No package list provided")
             return
 
-        has_tar = False
+        pkgs = SoftwarePackage.from_package_list(packages)
 
-        s_packages = " ".join([package for package in packages
-                               if '-vm' not in package and ('pie' in package or 'tar' in package)])
-        if 'tar' in s_packages:
-            has_tar = True
+        installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("show install inactive"))
+        packages_to_remove = pkgs & installed_inact
 
-        cmd = "admin install add source {} {} async".format(server_repository_url, s_packages)
+        if not packages_to_remove:
+            self.ctx.warning("Packages already removed. Nothing to be removed")
+            return
 
-        self.ctx.info("Add Package(s) Pending")
-        self.ctx.post_status("Add Package(s) Pending")
+        to_remove = " ".join(map(str, packages_to_remove))
 
-        install_add_remove(self.ctx, cmd, has_tar=has_tar)
+        cmd = 'install remove {}'.format(to_remove)
 
-        self.ctx.info("Package(s) Added Successfully")
+        self.ctx.info("Remove Package(s) Pending")
+        self.ctx.post_status("Remove Package(s) Pending")
+
+        install_add_remove(self.ctx, cmd)
+
+        self.ctx.info("Package(s) Removed Successfully")
 
         # Refresh package information
         get_package(self.ctx)
+
