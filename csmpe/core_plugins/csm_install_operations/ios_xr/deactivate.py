@@ -87,7 +87,9 @@ class Plugin(CSMPlugin):
 
         self.ctx.info("Deactivate package(s) pending")
         self.ctx.post_status("Deactivate Package(s) Pending")
+
         install_activate_deactivate(self.ctx, cmd)
+
         self.ctx.info("Deactivate package(s) done")
 
         # Refresh package information

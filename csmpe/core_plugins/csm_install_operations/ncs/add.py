@@ -3,6 +3,8 @@
 # Copyright (c) 2016, Cisco Systems
 # All rights reserved.
 #
+# # Author: Klaudiusz Staniek
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
@@ -25,33 +27,43 @@
 # =============================================================================
 
 from csmpe.plugins import CSMPlugin
+from install import install_add_remove
+from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
-    """This plugin retrieves software information from the device."""
-    name = "Get Software Packages Plugin"
-    platforms = {'ASR9K', 'CRS', 'NCS6K'}
-    phases = {'Get-Software-Packages'}
+    """This plugin adds packages from repository to the device."""
+    name = "Install Add Plugin"
+    platforms = {'NCS6K'}
+    phases = {'Add'}
 
     def run(self):
+        server_repository_url = self.ctx.server_repository_url
+        if server_repository_url is None:
+            self.ctx.error("No repository provided")
+            return
+
+        packages = self.ctx.software_packages
+        if packages is None:
+            self.ctx.error("No package list provided")
+            return
+
+        has_tar = False
+
+        s_packages = " ".join([package for package in packages
+                               if ('iso' in package or 'pkg' in package or 'smu' in package or 'tar' in package)])
+
+        if 'tar' in s_packages:
+            has_tar = True
+
+        cmd = "install add source {} {}".format(server_repository_url, s_packages)
+
+        self.ctx.info("Add Package(s) Pending")
+        self.ctx.post_status("Add Package(s) Pending")
+
+        install_add_remove(self.ctx, cmd, has_tar=has_tar)
+
+        self.ctx.info("Package(s) Added Successfully")
+
+        # Refresh package information
         get_package(self.ctx)
-
-
-def get_package(ctx):
-    if ctx.os_type == "XR":
-        if hasattr(ctx, 'active_cli'):
-            ctx.active_cli = ctx.send("admin show install active summary")
-        if hasattr(ctx, 'inactive_cli'):
-            ctx.inactive_cli = ctx.send("admin show install inactive summary")
-        if hasattr(ctx, 'committed_cli'):
-            ctx.committed_cli = ctx.send("admin show install committed summary")
-
-    if ctx.os_type == "eXR":
-        # eXR does not require the 'admin' keyword. In fact, using 'admin' shows
-        # only the admin package, not others.
-        if hasattr(ctx, 'active_cli'):
-            ctx.active_cli = ctx.send("show install active")
-        if hasattr(ctx, 'inactive_cli'):
-            ctx.inactive_cli = ctx.send("show install inactive")
-        if hasattr(ctx, 'committed_cli'):
-            ctx.committed_cli = ctx.send("show install committed")
