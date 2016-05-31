@@ -29,11 +29,11 @@ import csv
 import os
 import re
 import subprocess
+import json
 
 import pexpect
 
 from csmpe.plugins import CSMPlugin
-from install import parse_xr_show_platform
 from csmpe.context import PluginError
 from utils import ServerType, is_empty, concatenate_dirs
 from simple_server_helper import TFTPServer, FTPServer, SFTPServer
@@ -41,26 +41,27 @@ from csmpe.core_plugins.csm_node_status_check.ios_xr.plugin import Plugin as Nod
 from add import Plugin as InstallAddPlugin
 from activate import Plugin as InstallActivatePlugin
 from commit import Plugin as InstallCommitPlugin
+from migration_lib import SUPPORTED_HW_JSON
 
 MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.3"
 RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU = "6.1.1"
 
 NOX_64_BINARY = "nox-linux-64.bin"
 # NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
-# NOX_FOR_MAC = "nox-mac64"
+NOX_FOR_MAC = "nox-mac64"
 
 TIMEOUT_FOR_COPY_CONFIG = 3600
-TIMEOUT_FOR_COPY_ISO = 960
+TIMEOUT_FOR_COPY_IMAGE = 960
 TIMEOUT_FOR_FPD_UPGRADE = 9600
 
-ISO_LOCATION = "harddiskb:/"
+IMAGE_LOCATION = "harddiskb:/"
 
-# ROUTEPROCESSOR_RE = '(\d+/RS??P\d(?:/CPU\d*)?)'
-# LINECARD_RE = '[-\s](\d+/\d+(?:/CPU\d*)?)'
+ROUTEPROCESSOR_RE = '\d+/RS??P\d+/CPU\d+'
+LINECARD_RE = '\d+/\d+/CPU\d+'
 # SUPPORTED_CARDS = ['4X100', '8X100', '12X100']
 NODE = '(\d+/(?:RS?P)?\d+/CPU\d+)'
-FAN = '\d+/FT\d+'
-PEM = '\d+/PT\d+'
+FAN = '\d+/FT\d+/SP'
+PEM = '\d+/P[SM]\d+/M?\d+/SP'
 
 FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw', 'fpga8', 'fclnxfw', 'fcfsbl'])
 
@@ -76,16 +77,10 @@ XR_CONFIG_ON_DEVICE = "iosxr.cfg"
 ADMIN_CAL_CONFIG_ON_DEVICE = "admin_calvados.cfg"
 ADMIN_XR_CONFIG_ON_DEVICE = "admin_iosxr.cfg"
 
-
-SUPPORTED_RP = ["ASR-9922-RP-SE", "A99-RP2-SE", "A9K-RSP880-SE"]
-SUPPORTED_FAN = ["ASR-9904-FAN", "ASR-9006-FAN-V2", "ASR-9010-FAN-V2",
-                 "ASR-9910-FAN", "ASR-9912-FAN", "ASR-9922-FAN-V2"]
-SUPPORTED_PEM = ["PWR-2KW-DC-V2", "PWR-3KW-AC-V2", "PWR-6KW-AC-V3", "PWR-4.4KW-DC-V3"]
-
-# RSP/RP and LC
-SUPPORTED_CARDS = ["ASR-9922-RP-SE", "A99-RP2-SE", "A9K-RSP880-SE",
-                   "A9K-8X100GE-L-SE", "A9K-8X100GE-SE", "A99-8X100GE-SE", "A99-8X100GE-CM", "A9K-8X100GE-CM",
-                   "A9K-4X100GE-SE", "A99-12x100GE", "A9K-4X100GE-TR", "A99-8X100GE-TR", "A9K-8X100GE-TR"]
+VALID_STATE = ['IOS XR RUN',
+               'PRESENT',
+               'READY',
+               'OK']
 
 
 class Plugin(CSMPlugin):
@@ -106,43 +101,50 @@ class Plugin(CSMPlugin):
     platforms = {'ASR9K'}
     phases = {'Pre-Migrate'}
 
-    def _check_if_rp_fan_pem_supported(self):
-        """Check if all RSP/RP/FAN/PEM currently on device are supported for migration."""
+    def _check_if_rp_fan_pem_supported_and_in_valid_state(self, supported_hw):
+        """Check if all RSP/RP/FAN/PEM currently on device are supported and are in valid state for migration."""
         cmd = "show platform"
         output = self.ctx.send(cmd)
         file_name = self.ctx.save_to_file(cmd, output)
         if file_name is None:
             self.ctx.warning("Unable to save '{}' output to file: {}".format(cmd, file_name))
 
-        inventory = parse_xr_show_platform(output)
-        node_pattern = re.compile(NODE)
+        inventory = self.ctx.load_data("inventory")
+
+        rp_pattern = re.compile(ROUTEPROCESSOR_RE)
         fan_pattern = re.compile(FAN)
         pem_pattern = re.compile(PEM)
+
         for key, value in inventory.items():
-            rp_or_rsp = self._check_supported_card(key, node_pattern, value['type'], SUPPORTED_RP)
+
+            rp_or_rsp = self._check_if_supported_and_in_valid_state(key, rp_pattern, value, supported_hw.get("RP"))
             if not rp_or_rsp:
-                fan = self._check_supported_card(key, fan_pattern, value['type'], SUPPORTED_FAN)
+                fan = self._check_if_supported_and_in_valid_state(key, fan_pattern, value, supported_hw.get("FAN"))
                 if not fan:
-                    self._check_supported_card(key, pem_pattern, value['type'], SUPPORTED_PEM)
+                    self._check_if_supported_and_in_valid_state(key, pem_pattern, value, supported_hw.get("PEM"))
 
         return True
 
-    def _check_supported_card(self, node_name, card_pattern, card_type, supported_type_list):
+    def _check_if_supported_and_in_valid_state(self, node_name, card_pattern, value, supported_type_list):
         """
-        Check if a card (RSP/RP/FAN/PEM) is supported.
+        Check if a card (RSP/RP/FAN/PEM) is supported and in valid state.
         :param node_name: the name under "Node" column in output of CLI "show platform". i.e., "0/RSP0/CPU0"
         :param card_pattern: the regex for either the node name of a RSP, RP, FAN or PEM
-        :param card_type: the pid under "Type" column in output of CLI "show platform". i.e., "A9K-RSP880-SE(Active)"
+        :param value: the inventory value for nodes - through parsing output of "show platform"
         :param supported_type_list: the list of card types/pids that are supported for migration
         :return: True if this node is indeed the asked card(RP/RSP/FAN/PEM) and it's confirmed that it's supported
                     for migration.
-                False if this node is not the asked card(RP/RSP/FAN/PEM)
+                False if this node is not the asked card(RP/RSP/FAN/PEM).
                 error out if this node is indeed the asked card(RP/RSP/FAN/PEM) and it is NOT supported for migration.
         """
         if card_pattern.match(node_name):
             supported = False
+            if value['state'] not in VALID_STATE:
+                    self.ctx.error("{}={}: {}".format(node_name, value, "Not in valid state for migration"))
+            if not supported_type_list:
+                self.ctx.error("The supported hardware list is missing information.")
             for supported_type in supported_type_list:
-                if supported_type in card_type:
+                if supported_type in value['type']:
                     supported = True
                     break
             if not supported:
@@ -152,14 +154,22 @@ class Plugin(CSMPlugin):
             return True
         return False
 
-    def _get_supported_iosxr_run_nodes(self, inventory):
+    def _get_supported_iosxr_run_nodes(self, supported_hw):
         """Get names of all RSP's, RP's and Linecards in IOS-XR RUN state that are supported for migration."""
+        inventory = self.ctx.load_data("inventory")
+
         supported_iosxr_run_nodes = []
+
         node_pattern = re.compile(NODE)
+        if supported_hw.get("RP") and supported_hw.get("LC"):
+            supported_cards = supported_hw.get("RP") + supported_hw.get("LC")
+        else:
+            self.ctx.error("The supported hardware list is missing information on RP and/or LC.")
+
         for key, value in inventory.items():
             if node_pattern.match(key):
                 if value['state'] == 'IOS XR RUN':
-                    for card in SUPPORTED_CARDS:
+                    for card in supported_cards:
                         if card in value['type']:
                             supported_iosxr_run_nodes.append(key)
                             break
@@ -268,7 +278,7 @@ class Plugin(CSMPlugin):
         :param repository: the string url link that points to the location of files in the SFTP server repository
         :param source_filenames: a list of string filenames in the designated directory in the server repository.
         :param dest_files: a list of string file paths that each points to a file to be created on device.
-                    i.e., ["harddiskb:/asr9k-mini-x64.iso"]
+                    i.e., ["harddiskb:/asr9k-mini-x64.tar"]
         :param timeout: the timeout for the sftp copy operation on device. The default is 10 minutes.
         :return: None if no error occurred.
         """
@@ -292,7 +302,7 @@ class Plugin(CSMPlugin):
                     with no extra '/' in the end. i.e., tftp://223.255.254.245/tftpboot
         :param source_filenames: a list of string filenames in the designated directory in the server repository.
         :param dest_files: a list of string file paths that each points to a file to be created on device.
-                    i.e., ["harddiskb:/asr9k-mini-x64.iso"]
+                    i.e., ["harddiskb:/asr9k-mini-x64.tar"]
         :param timeout: the timeout for the 'copy' CLI command on device. The default is 10 minutes.
         :return: None if no error occurred.
         """
@@ -353,7 +363,7 @@ class Plugin(CSMPlugin):
         :param server: the sftp server object
         :param source_filenames: a list of string filenames in the designated directory in the server repository.
         :param dest_files: a list of string file paths that each points to a file to be created on device.
-                    i.e., ["harddiskb:/asr9k-mini-x64.iso"]
+                    i.e., ["harddiskb:/asr9k-mini-x64.tar"]
         :param timeout: the timeout for the sftp copy operation on device. The default is 10 minutes.
         :return: None if no error occurred.
         """
@@ -575,7 +585,7 @@ class Plugin(CSMPlugin):
 
         :param packages: all user selected packages from scheduling the Pre-Migrate
         :param iosxr_run_nodes: the list of string nodes names we get from running
-                                self._get_supported_iosxr_run_nodes()
+                                self._get_supported_iosxr_run_nodes(supported_hw)
         :param version: the current version of software. i.e., "5.3.3"
         :return: True if no error occurred.
         """
@@ -854,22 +864,17 @@ class Plugin(CSMPlugin):
                 config_names_on_device.append(XR_CONFIG_ON_DEVICE)
 
             self._copy_files_to_device(server, repo_url, config_names_in_repo,
-                                       [ISO_LOCATION + config_name
+                                       [IMAGE_LOCATION + config_name
                                         for config_name in config_names_on_device],
                                        timeout=TIMEOUT_FOR_COPY_CONFIG)
 
-    def _copy_iso_to_device(self, server, packages, repo_url):
-        """Copy the user selected ASR9K eXR image from server repository to /harddiskb:/ on device."""
-        found_iso = False
-        iso_image_pattern = re.compile("asr9k.*\.iso.*")
+    def _get_exr_tar_package(self, packages):
+        """Find out which version of eXR we are migrating to from the name of tar file"""
+        image_pattern = re.compile("asr9k.*\.tar.*")
         for package in packages:
-            if iso_image_pattern.match(package):
-                self._copy_files_to_device(server, repo_url, [package],
-                                           [ISO_LOCATION + package], timeout=TIMEOUT_FOR_COPY_ISO)
-                found_iso = True
-                break
-        if not found_iso:
-            self.ctx.error("No ASR9K IOS XR 64 Bit image found in packages.")
+            if image_pattern.match(package):
+                return package
+        self.ctx.error("No ASR9K IOS XR 64 Bit tar file found in packages.")
 
     def _find_nox_to_use(self):
         """
@@ -915,6 +920,25 @@ class Plugin(CSMPlugin):
 
         if server is None:
             self.ctx.error("No server repository selected")
+
+        try:
+            override_hw_req = self.ctx.pre_migrate_override_hw_req
+        except AttributeError:
+            self.ctx.error("No indication for whether to override hardware requirement or not.")
+
+        with open(SUPPORTED_HW_JSON) as supported_hw_file:
+            supported_hw = json.load(supported_hw_file)
+
+        exr_image = self._get_exr_tar_package(packages)
+        version_match = re.findall("\d+\.\d+\.\d+", exr_image)
+        if version_match:
+            exr_version = version_match[0]
+        else:
+            self.ctx.error("The selected tar file is missing release number in its filename.")
+
+        if supported_hw.get(exr_version) is None:
+            self.ctx.error("Missing hardware support information available for release {}.".format(exr_version))
+
         self._filter_server_repository(server)
 
         hostname_for_filename = re.sub("[()\s]", "_", self.ctx._csm.host.hostname)
@@ -926,6 +950,15 @@ class Plugin(CSMPlugin):
             os.makedirs(fileloc)
 
         self.ctx.info("Checking if some migration requirements are met.")
+
+        if supported_hw.get(exr_version) and not override_hw_req:
+            self.ctx.info("Check if all RSP/RP/FAN/PEM on device are supported for migration.")
+            self._check_if_rp_fan_pem_supported_and_in_valid_state(supported_hw[exr_version])
+
+        iosxr_run_nodes = self._get_supported_iosxr_run_nodes(supported_hw[exr_version])
+
+        if len(iosxr_run_nodes) == 0:
+            self.ctx.error("No RSP/RP or Linecard on the device is supported for migration to ASR9K-X64.")
 
         if self.ctx.os_type != "XR":
             self.ctx.error('Device is not running ASR9K Classic XR. Migration action aborted.')
@@ -940,8 +973,6 @@ class Plugin(CSMPlugin):
         if version < MINIMUM_RELEASE_VERSION_FOR_MIGRATION:
             self.ctx.error("The minimal release version required for migration is 5.3.3. " +
                            "Please upgrade to at lease R5.3.3 before scheduling migration.")
-
-        self._ping_repository_check(server_repo_url)
         try:
             node_status_plugin = NodeStatusPlugin(self.ctx)
             node_status_plugin.run()
@@ -949,20 +980,14 @@ class Plugin(CSMPlugin):
             self.ctx.error("Not all nodes are in valid states. Pre-Migrate aborted. " +
                            "Please check session.log to trouble-shoot.")
 
-        self.ctx.info("Check if all RSP/RP/FAN/PEM on device are supported for migration.")
-        inventory = self._check_if_rp_fan_pem_supported()
-
-        iosxr_run_nodes = self._get_supported_iosxr_run_nodes(inventory)
-
-        if len(iosxr_run_nodes) == 0:
-            self.ctx.error("No RSP/RP or Linecard on the device is supported for migration to ASR9K-X64.")
+        self._ping_repository_check(server_repo_url)
 
         self.ctx.info("Resizing eUSB partition.")
         self._resize_eusb()
 
-        nox_to_use = self.ctx.migration_directory + self._find_nox_to_use()
+        # nox_to_use = self.ctx.migration_directory + self._find_nox_to_use()
 
-        # nox_to_use = self.ctx.migration_directory + NOX_FOR_MAC
+        nox_to_use = self.ctx.migration_directory + NOX_FOR_MAC
 
         if not os.path.isfile(nox_to_use):
             self.ctx.error("The configuration conversion tool {} is missing. ".format(nox_to_use) +
@@ -971,8 +996,9 @@ class Plugin(CSMPlugin):
         self._handle_configs(hostname_for_filename, server,
                              server_repo_url, fileloc, nox_to_use, config_filename)
 
-        self.ctx.info("Copying the eXR ISO image from server repository to device.")
-        self._copy_iso_to_device(server, packages, server_repo_url)
+        self.ctx.info("Copying the ASR9K-X64 image from server repository to device.")
+        self._copy_files_to_device(server, server_repo_url, [exr_image],
+                                   [IMAGE_LOCATION + exr_image], timeout=TIMEOUT_FOR_COPY_IMAGE)
 
         self._ensure_updated_fpd(packages, iosxr_run_nodes, version)
 
