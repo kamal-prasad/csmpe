@@ -35,8 +35,9 @@ from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_packa
 class Plugin(CSMPlugin):
     """This plugin deactivates packages on the device."""
     name = "Install Deactivate Plugin"
-    platforms = {'ASR9K'}
+    platforms = {'ASR9K', 'CRS'}
     phases = {'Deactivate'}
+    os = {'XR'}
 
     def get_tobe_deactivated_pkg_list(self):
         """

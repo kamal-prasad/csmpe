@@ -3,8 +3,6 @@
 # Copyright (c) 2016, Cisco Systems
 # All rights reserved.
 #
-# # Author: Klaudiusz Staniek
-#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
@@ -36,9 +34,8 @@ from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_packa
 class Plugin(CSMPlugin):
     """This plugin Activates packages on the device."""
     name = "Install Activate Plugin"
-    platforms = {'ASR9K', 'CRS'}
+    platforms = {'NCS6K'}
     phases = {'Activate'}
-    os = {'XR'}
 
     def get_tobe_activated_pkg_list(self):
         """
@@ -47,8 +44,16 @@ class Plugin(CSMPlugin):
         packages = self.ctx.software_packages
 
         pkgs = SoftwarePackage.from_package_list(packages)
-        installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("admin show install inactive summary"))
-        installed_act = SoftwarePackage.from_show_cmd(self.ctx.send("admin show install active summary"))
+
+        # RP/0/RP0/CPU0:Deploy#show install inactive
+        # 5 inactive package(s) found:
+        #     ncs6k-k9sec-5.2.5.47I
+        #     ncs6k-mpls-5.2.5.47I
+        #     ncs6k-5.2.5.47I.CSCuy47880-0.0.4.i
+        #     ncs6k-mgbl-5.2.5.47I
+        #     ncs6k-5.2.5.CSCuz65240-1.0.0
+        installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("show install inactive"))
+        installed_act = SoftwarePackage.from_show_cmd(self.ctx.send("show install active"))
 
         # Packages to activate but not already active
         pkgs = pkgs - installed_act
@@ -57,8 +62,7 @@ class Plugin(CSMPlugin):
             # After the packages are considered equal according to SoftwarePackage.__eq__(),
             # Use the package name in the inactive area.  It is possible that the package
             # name given for Activation may be an external filename like below.
-            # asr9k-px-5.3.3.CSCuy81837.pie to disk0:asr9k-px-5.3.3.CSCuy81837-1.0.0
-            # asr9k-mcast-px.pie-5.3.3 to disk0:asr9k-mcast-px-5.3.3
+            # ncs6k-5.2.5.CSCuz65240.smu to ncs6k-5.2.5.CSCuz65240-1.0.0
             for inactive_pkg in installed_inact:
                 for pkg in pkgs:
                     if pkg == inactive_pkg:
@@ -82,8 +86,10 @@ class Plugin(CSMPlugin):
         """
         operation_id = None
         if hasattr(self.ctx, 'operation_id'):
-            self.ctx.info("Using the operation ID: {}".format(self.ctx.operation_id))
-            operation_id = self.ctx.operation_id
+            if self.ctx.operation_id != -1:
+                self.ctx.info("Using the operation ID: {}".format(self.ctx.operation_id))
+                operation_id = self.ctx.operation_id
+
         if operation_id is None or operation_id == -1:
             tobe_activated = self.get_tobe_activated_pkg_list()
             if not tobe_activated:
@@ -91,9 +97,9 @@ class Plugin(CSMPlugin):
                 return True
 
         if operation_id is not None and operation_id != -1:
-            cmd = 'admin install activate id {} prompt-level none async'.format(operation_id)
+            cmd = 'install activate id {}'.format(operation_id)
         else:
-            cmd = 'admin install activate {} prompt-level none async'.format(tobe_activated)
+            cmd = 'install activate {}'.format(tobe_activated)
 
         self.ctx.info("Activate package(s) pending")
         self.ctx.post_status("Activate Package(s) Pending")

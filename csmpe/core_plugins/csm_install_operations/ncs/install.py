@@ -1,9 +1,8 @@
+# coding=utf-8
 # =============================================================================
 #
 # Copyright (c) 2016, Cisco Systems
 # All rights reserved.
-#
-# # Author: Klaudiusz Staniek
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -31,6 +30,8 @@ import itertools
 
 install_error_pattern = re.compile("Error:    (.*)$", re.MULTILINE)
 
+csm_ctx = None
+
 
 def log_install_errors(ctx, output):
         errors = re.findall(install_error_pattern, output)
@@ -39,51 +40,78 @@ def log_install_errors(ctx, output):
 
 
 def watch_operation(ctx, op_id=0):
-        """
-        RP/0/RP0/CPU0:Deploy#show install request
-        The install operation 17 is 30% complete
+    """
+    Watch for the non-reload situation.  Upon issuing add/activate/commit/remove/deactivate, the install operation
+    will be executed in the background.  The following message
 
-        or
+    Install operation will continue in the background
 
-        RP/0/RP0/CPU0:Deploy#show install request
-        No install operation in progress
+    will be displayed.  After some time elapses, a successful or abort message will be displayed.
 
-        When install is completed, the following message will be displayed
-        RP/0/RP0/CPU0:Deploy#May 24 22:25:43 Install operation 17 finished successfully
-        """
-        no_install = r"No install operation in progress"
-        op_progress = r"The install operation {} is (\d+)% complete".format(op_id)
-        success = "Install operation {} finished successfully".format(op_id)
+    The CLI command, 'show install request' is used in the loop to report the progress percentages.  Upon
+    completion, 'show install request' returns 'No install operation in progress'.  The watch_operation will be
+    done at that point.
 
-        cmd_show_install_request = "show install request"
-        ctx.info("Watching the operation {} to complete".format(op_id))
+    As an example,
 
-        last_status = None
-        finish = False
-        while not finish:
-            try:
-                # this is to catch the successful operation as soon as possible
-                ctx.send("", wait_for_string=success, timeout=20)
-                finish = True
-            except ctx.CommandTimeoutError:
-                pass
+    RP/0/RP0/CPU0:Deploy#install deactivate ncs6k-5.2.5.CSCuz65240-1.0.0
+    May 31 20:14:14 Install operation 3 started by root:
+      install deactivate pkg ncs6k-5.2.5.CSCuz65240-1.0.0
+    May 31 20:14:14 Package list:
+    May 31 20:14:14     ncs6k-5.2.5.CSCuz65240-1.0.0
+    May 31 20:14:20 Install operation will continue in the background
 
-            message = ""
-            output = ctx.send(cmd_show_install_request)
-            if op_id in output:
-                result = re.search(op_progress, output)
-                if result:
-                    status = result.group(0)
-                    message = "{}".format(status)
+    <--- Time Lapse --->
 
-                if message != last_status:
-                    ctx.post_status(message)
-                    last_status = message
+    RP/0/RP0/CPU0:Deploy#May 31 20:15:10 Install operation 3 finished successfully
 
-            if no_install in output:
-                break
+    ------------------------------------------------------------------------------------------------------------
+    RP/0/RP0/CPU0:Deploy#show install request
+    The install operation 17 is 30% complete
 
-        return output
+    or
+
+    RP/0/RP0/CPU0:Deploy#show install request
+    No install operation in progress
+
+    When install is completed, the following message will be displayed
+
+    ------------------------------------------------------------------------------------------------------------
+    If the install operation is successful, the following message will be displayed.
+
+    RP/0/RP0/CPU0:Deploy#May 24 22:25:43 Install operation 17 finished successfully
+    """
+    no_install = r"No install operation in progress"
+    op_progress = r"The install operation {} is (\d+)% complete".format(op_id)
+    success = "Install operation {} finished successfully".format(op_id)
+
+    cmd_show_install_request = "show install request"
+    ctx.info("Watching the operation {} to complete".format(op_id))
+
+    last_status = None
+    finish = False
+    while not finish:
+        try:
+            # this is to catch the successful operation as soon as possible
+            ctx.send("", wait_for_string=success, timeout=20)
+            finish = True
+        except ctx.CommandTimeoutError:
+            pass
+
+        message = ""
+        output = ctx.send(cmd_show_install_request)
+        if op_id in output:
+            result = re.search(op_progress, output)
+            if result:
+                status = result.group(0)
+                message = "{}".format(status)
+
+            if message != last_status:
+                ctx.post_status(message)
+                last_status = message
+
+        if no_install in output:
+            break
 
 
 def parse_xr_show_platform(output):
@@ -107,20 +135,23 @@ def validate_xr_node_state(inventory):
     valid_state = [
         'IOS XR RUN',
         'PRESENT',
-        'UNPOWERED',
         'READY',
-        'UNPOWERED',
         'FAILED',
         'OK',
+        'DISABLED',
+        'UNPOWERED',
         'ADMIN DOWN',
-        'DISABLED'
+        'OPERATIONAL',
+        'NOT ALLOW ONLIN',  # This is not spelling error
     ]
+
     for key, value in inventory.items():
         if 'CPU' in key:
             if value['state'] not in valid_state:
                 break
     else:
         return True
+
     return False
 
 
@@ -131,22 +162,25 @@ def wait_for_reload(ctx):
     """
     ctx.disconnect()
     time.sleep(60)
-
     ctx.reconnect(max_timeout=1500)  # 25 * 60 = 1500
+
     timeout = 3600
     poll_time = 30
     time_waited = 0
     xr_run = "IOS XR RUN"
 
-    cmd = "admin show platform"
+    cmd = "show platform"
     ctx.info("Waiting for all nodes to come up")
     ctx.post_status("Waiting for all nodes to come up")
+
     time.sleep(100)
+
     while 1:
         # Wait till all nodes are in XR run state
         time_waited += poll_time
         if time_waited >= timeout:
             break
+
         time.sleep(poll_time)
         output = ctx.send(cmd)
         if xr_run in output:
@@ -158,60 +192,6 @@ def wait_for_reload(ctx):
     # Some nodes did not come to run state
     ctx.error("Not all nodes have came up: {}".format(output))
     # this will never be executed
-    return False
-
-
-def watch_install(ctx, oper_id, cmd):
-    # FIXME: Add description
-
-    """
-
-    """
-    success_oper = r'Install operation (\d+) completed successfully'
-    completed_with_failure = 'Install operation (\d+) completed with failure'
-    failed_oper = r'Install operation (\d+) failed'
-    failed_incr = r'incremental.*parallel'
-    # restart = r'Parallel Process Restart'
-    install_method = r'Install [M|m]ethod: (.*)'
-    op_success = "The install operation will continue asynchronously"
-
-    watch_operation(ctx, oper_id)
-
-    output = ctx.send("admin show install log {} detail".format(oper_id))
-    if re.search(failed_oper, output):
-        if re.search(failed_incr, output):
-            ctx.info("Retrying with parallel reload option")
-            cmd += " parallel-reload"
-            output = ctx.send(cmd)
-            if op_success in output:
-                result = re.search('Install operation (\d+) \'', output)
-                if result:
-                    op_id = result.group(1)
-                    watch_operation(ctx, op_id)
-                    output = ctx.send("admin show install log {} detail".format(oper_id))
-                else:
-                    log_install_errors(ctx, output)
-                    ctx.error("Operation ID not found")
-                    return
-        else:
-            log_install_errors(ctx, output)
-            ctx.error(output)
-            return
-
-    result = re.search(install_method, output)
-    if result:
-        restart_type = result.group(1).strip()
-        ctx.info("{} Pending".format(restart_type))
-        if restart_type == "Parallel Reload":
-            if re.search(completed_with_failure, output):
-                ctx.info("Install completed with failure, going for reload")
-            elif re.search(success_oper, output):
-                ctx.info("Install completed successfully, going for reload")
-            return wait_for_reload(ctx)
-        elif restart_type == "Parallel Process Restart":
-            return True
-
-    log_install_errors(ctx, output)
     return False
 
 
@@ -230,6 +210,7 @@ def install_add_remove(ctx, cmd, has_tar=False):
     May 23 21:20:28 Package list:
     May 23 21:20:28     ncs6k-5.2.5.47I.CSCux97367-0.0.15.i
     May 23 21:20:29 Install operation will continue in the background
+
     RP/0/RP0/CPU0:Deploy#May 23 21:20:29 Install operation 2 finished successfully
 
     Failed Condition:
@@ -240,13 +221,9 @@ def install_add_remove(ctx, cmd, has_tar=False):
     May 23 22:57:46 Package list:
     May 23 22:57:46     ncs6k-5.2.5.47I.CSCux97367-0.0.15.i
     May 23 22:57:47 Install operation will continue in the background
+
     RP/0/RSP0/CPU0:CORFU#May 23 22:57:48 Install operation 28 aborted
     """
-
-    # message = "Waiting the operation to continue asynchronously"
-    # ctx.info(message)
-    # ctx.post_status(message)
-
     output = ctx.send(cmd, timeout=7200)
     result = re.search('Install operation (\d+)', output)
     if result:
@@ -260,47 +237,160 @@ def install_add_remove(ctx, cmd, has_tar=False):
         return  # for sake of clarity
 
     op_success = "Install operation will continue in the background"
-    failed_oper = r'Install operation {} aborted'.format(op_id)
 
     if op_success in output:
-        watch_operation(ctx, op_id=op_id)
-        output = ctx.send("show install log {} detail".format(op_id))
-        if re.search(failed_oper, output):
-            log_install_errors(ctx, output)
-            ctx.error("Operation {} failed".format(op_id))
-            return  # for same of clarity
-
-        ctx.info("Operation {} finished successfully".format(op_id))
-        return  # for sake of clarity
+        watch_operation(ctx, op_id)
+        report_install_status(ctx, op_id)
     else:
         log_install_errors(ctx, output)
         ctx.error("Operation {} failed".format(op_id))
+
+
+def get_op_id(output):
+    """
+    :param output: Output from the install command
+    :return: the operational ID
+    """
+    result = re.search('Install operation (\d+)', output)
+    if result:
+        return result.group(1)
+    return -1
+
+
+def report_install_status(ctx, op_id):
+    """
+    :param ctx: CSM Context object
+    :param op_id: operational ID
+    Peeks into the install log to see if the install operation is successful or not
+    """
+    failed_oper = r'Install operation {} aborted'.format(op_id)
+    output = ctx.send("show install log {} detail".format(op_id))
+    if re.search(failed_oper, output):
+        log_install_errors(ctx, output)
+        ctx.error("Operation {} failed".format(op_id))
+
+    ctx.info("Operation {} finished successfully".format(op_id))
+
+
+def handle_aborted(fsm_ctx):
+    """
+    :param ctx: FSM Context
+    :return: True if successful other False
+    """
+    global csm_ctx
+
+    report_install_status(ctx=csm_ctx, op_id=get_op_id(fsm_ctx.ctrl.before))
+
+    # Indicates the failure
+    return False
+
+
+def handle_non_reload_activate_deactivate(fsm_ctx):
+    """
+    :param ctx: FSM Context
+    :return: True if successful other False
+    """
+    global csm_ctx
+
+    op_id = get_op_id(fsm_ctx.ctrl.before)
+    if op_id == -1:
+        return False
+
+    watch_operation(csm_ctx, op_id)
+    report_install_status(csm_ctx, op_id)
+
+    return True
+
+
+def handle_reload_activate_deactivate(fsm_ctx):
+    """
+    :param ctx: FSM Context
+    :return: True if successful other False
+    """
+    global csm_ctx
+
+    op_id = get_op_id(fsm_ctx.ctrl.before)
+    if op_id == -1:
+        return False
+
+    watch_operation(csm_ctx, op_id)
+    success = wait_for_reload(csm_ctx)
+    if not success:
+        csm_ctx.error("Reload or boot failure")
+        return
+
+    csm_ctx.info("Operation {} finished successfully".format(op_id))
+
+    return True
 
 
 def install_activate_deactivate(ctx, cmd):
-    message = "Waiting the operation to continue asynchronously"
-    ctx.info(message)
-    ctx.post_status(message)
+    """
+    Abort Situation:
+    RP/0/RP0/CPU0:Deploy#install activate ncs6k-5.2.5.CSCuz65240-1.0.0
 
-    op_success = "The install operation will continue asynchronously"
-    output = ctx.send(cmd, timeout=7200)
-    result = re.search('Install operation (\d+) \'', output)
-    if result:
-        op_id = result.group(1)
-    else:
-        log_install_errors(ctx, output)
-        ctx.error("Operation failed")
-        return
+    Jun 02 20:19:31 Install operation 8 started by root:
+      install activate pkg ncs6k-5.2.5.CSCuz65240-1.0.0
+    Jun 02 20:19:31 Package list:
+    Jun 02 20:19:31     ncs6k-5.2.5.CSCuz65240-1.0.0
+    Jun 02 20:19:31     ncs6k-5.2.5.47I.CSCuy47880-0.0.4.i
+    Jun 02 20:19:31     ncs6k-5.2.5.CSCux82987-1.0.0
+    Jun 02 20:19:38 Install operation 8 aborted
 
-    if op_success in output:
-        success = watch_install(ctx, op_id, cmd)
-        if not success:
-            ctx.error("Reload or boot failure")
-            return
+    ------------------------------------------------------------------------------------------------------------
+    Non-Reload Situation:
 
-        ctx.info("Operation {} finished successfully".format(op_id))
-        return
-    else:
-        ctx.log_install_errors(output)
-        ctx.error("Operation {} failed".format(op_id))
-        return
+    RP/0/RP0/CPU0:Deploy#install deactivate ncs6k-5.2.5.CSCuz65240-1.0.0
+    May 31 20:14:14 Install operation 3 started by root:
+      install deactivate pkg ncs6k-5.2.5.CSCuz65240-1.0.0
+    May 31 20:14:14 Package list:
+    May 31 20:14:14     ncs6k-5.2.5.CSCuz65240-1.0.0
+    May 31 20:14:20 Install operation will continue in the background
+
+    <--- Time Lapses --->
+
+    RP/0/RP0/CPU0:Deploy#May 31 20:15:10 Install operation 3 finished successfully
+
+    ------------------------------------------------------------------------------------------------------------
+    Reload Situation:
+
+    RP/0/RP0/CPU0:Deploy#install activate ncs6k-5.2.5.CSCux82987-1.0.0
+    May 31 20:17:08 Install operation 4 started by root:
+      install activate pkg ncs6k-5.2.5.CSCux82987-1.0.0
+    May 31 20:17:08 Package list:
+    May 31 20:17:08     ncs6k-5.2.5.CSCux82987-1.0.0
+
+    <--- Time Lapses --->
+
+    This install operation will reboot the sdr, continue?
+     [yes/no]:[yes] <Hit Enter>
+    May 31 20:17:47 Install operation will continue in the background
+
+    <--- Time Lapses --->
+
+    RP/0/RP0/CPU0:Deploy#May 31 20:18:44 Install operation 4 finished successfully
+
+    <--- Router Starts Reloading --->
+
+    Connection closed by foreign host.
+    """
+    global csm_ctx
+    csm_ctx = ctx
+
+    ABORTED = re.compile("aborted")
+
+    # Seeing this message without the reboot prompt indicates a non-reload situation
+    CONTINUE_IN_BACKGROUND = re.compile("Install operation will continue in the background")
+
+    # REBOOT_PROMPT = r"This install operation will reboot"
+    REBOOT_PROMPT = re.compile("This install operation will reboot the sdr, continue")
+
+    events = [CONTINUE_IN_BACKGROUND, REBOOT_PROMPT, ABORTED]
+    transitions = [
+        (CONTINUE_IN_BACKGROUND, [0], -1, handle_non_reload_activate_deactivate, 20),
+        (REBOOT_PROMPT, [0], -1, handle_reload_activate_deactivate, 20),
+        (ABORTED, [0], -1, handle_aborted, 20),
+    ]
+
+    if not ctx.run_fsm("activate or deactivate", cmd, events, transitions, timeout=60):
+        ctx.error("Failed: {}".format(cmd))

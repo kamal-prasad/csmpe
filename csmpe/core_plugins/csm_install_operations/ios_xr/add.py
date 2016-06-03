@@ -34,8 +34,9 @@ from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_packa
 class Plugin(CSMPlugin):
     """This plugin adds packages from repository to the device."""
     name = "Install Add Plugin"
-    platforms = {'ASR9K'}
+    platforms = {'ASR9K', 'CRS'}
     phases = {'Add'}
+    os = {'XR'}
 
     def run(self):
         server_repository_url = self.ctx.server_repository_url

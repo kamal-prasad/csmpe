@@ -3,8 +3,6 @@
 # Copyright (c) 2016, Cisco Systems
 # All rights reserved.
 #
-# # Author: Klaudiusz Staniek
-#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
@@ -35,24 +33,24 @@ from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_packa
 
 
 class Plugin(CSMPlugin):
-    """This plugin Activates packages on the device."""
+    """This plugin commits packages on the device."""
     name = "Install Commit Plugin"
-    platforms = {'ASR9K', 'CRS'}
+    platforms = {'NCS6K'}
     phases = {'Commit'}
-    os = {'XR'}
 
     def run(self):
         """
         It performs commit operation
+        RP/0/RP0/CPU0:Deploy#install commit
+        May 27 16:34:04 Install operation 32 started by root:
+          install commit
+        May 27 16:34:05 Install operation will continue in the background
+
+        RP/0/RP0/CPU0:Deploy#May 27 16:34:11 Install operation 32 finished successfully
         """
-
-        failed_oper = r'Install operation (\d+) failed'
-        completed_with_failure = 'Install operation (\d+) completed with failure'
-        success_oper = r'Install operation (\d+) completed successfully'
-
-        cmd = "admin install commit"
+        cmd = "install commit"
         output = self.ctx.send(cmd)
-        result = re.search('Install operation (\d+) \'', output)
+        result = re.search('Install operation (\d+)', output)
         if result:
             op_id = result.group(1)
             watch_operation(self.ctx, op_id)
@@ -61,7 +59,13 @@ class Plugin(CSMPlugin):
             self.ctx.error("Operation ID not found.")
             return
 
-        cmd = "admin show install log {} detail".format(op_id)
+        failed_oper = r'Install operation {} aborted'.format(op_id)
+        success_oper = r'Install operation (\d+) finished successfully'
+
+        # Not sure if this is still the message on NCS6K
+        completed_with_failure = 'Install operation (\d+) completed with failure'
+
+        cmd = "show install log {} detail".format(op_id)
         output = self.ctx.send(cmd)
 
         if re.search(failed_oper, output):

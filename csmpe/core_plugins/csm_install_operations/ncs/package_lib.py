@@ -40,18 +40,18 @@ ncs6k-mini-x.iso-5.2.4                        ncs6k-xr-5.2.5
 ncs6k-mpls.pkg-5.2.4                          ncs6k-mpls-5.2.4
 ncs6k-sysadmin.iso-5.2.4                      ncs6k-sysadmin-5.2.4
 ncs6k-full-x.iso-5.2.4
-ncs6k-5.2.5.CSCuy47880.smu                    ncs6k-5.2.5.47I.CSCuy47880
+ncs6k-5.2.5.CSCuy47880.smu                    ncs6k-5.2.5.CSCuy47880-1.0.0
 
 Engineering Packages
 
 External Names                                Internal Names
-ncs6k-mgbl.pkg-6.1.0.47I.DT_IMAGE             ncs6k-mcast-5.2.5.47I
+ncs6k-mcast.pkg-5.2.5.47I.DT_IMAGE            ncs6k-mcast-5.2.5.47I
 ncs6k-mini-x.iso-6.1.0.07I.DT_IMAGE           ncs6k-xr-5.2.5.47I
 ncs6k-5.2.5.47I.CSCuy47880-0.0.4.i.smu        ncs6k-5.2.5.47I.CSCuy47880-0.0.4.i
 """
 
 platforms = ["ncs6k"]
-package_types = "sysadmin full mini mcast mgbl mpls k9sec doc li".split()
+package_types = "sysadmin full mini mcast mgbl mpls k9sec doc li xr".split()
 version_re = re.compile("(?P<VERSION>\d+\.\d+\.\d+(\.\d+\w+)?)")  # 5.2.4 or 5.2.4.47I
 smu_re = re.compile("(?P<SMU>CSC[a-z]{2}\d{5})")
 subversion_re = re.compile("CSC.*(?P<SUBVERSION>\d+\.\d+\.\d+?)") # 0.0.4

@@ -3,8 +3,6 @@
 # Copyright (c) 2016, Cisco Systems
 # All rights reserved.
 #
-# # Author: Klaudiusz Staniek
-#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
@@ -26,7 +24,6 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-
 from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
 from install import install_activate_deactivate
@@ -34,73 +31,72 @@ from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_packa
 
 
 class Plugin(CSMPlugin):
-    """This plugin Activates packages on the device."""
-    name = "Install Activate Plugin"
-    platforms = {'ASR9K', 'CRS'}
-    phases = {'Activate'}
-    os = {'XR'}
+    """This plugin deactivates packages on the device."""
+    name = "Install Deactivate Plugin"
+    platforms = {'NCS6K'}
+    phases = {'Deactivate'}
 
-    def get_tobe_activated_pkg_list(self):
+    def get_tobe_deactivated_pkg_list(self):
         """
-        Produces a list of packaged to be activated
+        Produces a list of packaged to be deactivated
         """
         packages = self.ctx.software_packages
-
         pkgs = SoftwarePackage.from_package_list(packages)
-        installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("admin show install inactive summary"))
-        installed_act = SoftwarePackage.from_show_cmd(self.ctx.send("admin show install active summary"))
 
-        # Packages to activate but not already active
-        pkgs = pkgs - installed_act
-        if pkgs:
-            packages_to_activate = set()
-            # After the packages are considered equal according to SoftwarePackage.__eq__(),
-            # Use the package name in the inactive area.  It is possible that the package
-            # name given for Activation may be an external filename like below.
-            # asr9k-px-5.3.3.CSCuy81837.pie to disk0:asr9k-px-5.3.3.CSCuy81837-1.0.0
-            # asr9k-mcast-px.pie-5.3.3 to disk0:asr9k-mcast-px-5.3.3
-            for inactive_pkg in installed_inact:
-                for pkg in pkgs:
-                    if pkg == inactive_pkg:
-                        packages_to_activate.add(inactive_pkg)
+        installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("show install inactive"))
+        installed_act = SoftwarePackage.from_show_cmd(self.ctx.send("show install active"))
 
-            if not packages_to_activate:
+        # Packages in to deactivate but not inactive
+        packages_to_deactivate = pkgs - installed_inact
+
+        if packages_to_deactivate:
+            # packages to be deactivated and installed active packages
+            packages_to_deactivate = packages_to_deactivate & installed_act
+            if not packages_to_deactivate:
                 to_deactivate = " ".join(map(str, pkgs))
 
-                state_of_packages = "\nTo activate :{} \nInactive: {} \nActive: {}".format(
+                state_of_packages = "\nTo deactivate :{} \nInactive: {} \nActive: {}".format(
                     to_deactivate, installed_inact, installed_act
                 )
                 self.ctx.info(state_of_packages)
-                self.ctx.error('To be activated packages not in inactive packages list.')
+                self.ctx.error('To be deactivated packages not in inactive packages list.')
                 return None
             else:
-                return " ".join(map(str, packages_to_activate))
+                return " ".join(map(str, packages_to_deactivate))
 
     def run(self):
         """
-        Performs install activate operation
+        Performs install deactivate operation
+        RP/0/RP0/CPU0:Deploy#install deactivate ncs6k-5.2.5.CSCuz65240-1.0.0
+        May 27 16:39:31 Install operation 33 started by root:
+          install deactivate pkg ncs6k-5.2.5.CSCuz65240-1.0.0
+        May 27 16:39:31 Package list:
+        May 27 16:39:31     ncs6k-5.2.5.CSCuz65240-1.0.0
+        May 27 16:39:36 Install operation will continue in the background
         """
         operation_id = None
         if hasattr(self.ctx, 'operation_id'):
-            self.ctx.info("Using the operation ID: {}".format(self.ctx.operation_id))
-            operation_id = self.ctx.operation_id
+            if self.ctx.operation_id != -1:
+                self.ctx.info("Using the operation ID: {}".format(self.ctx.operation_id))
+                operation_id = self.ctx.operation_id
+
         if operation_id is None or operation_id == -1:
-            tobe_activated = self.get_tobe_activated_pkg_list()
-            if not tobe_activated:
-                self.ctx.info("Nothing to be activated.")
+            tobe_deactivated = self.get_tobe_deactivated_pkg_list()
+            if not tobe_deactivated:
+                self.ctx.info("Nothing to be deactivated.")
                 return True
 
         if operation_id is not None and operation_id != -1:
-            cmd = 'admin install activate id {} prompt-level none async'.format(operation_id)
+            cmd = 'install deactivate id {}'.format(operation_id)
         else:
-            cmd = 'admin install activate {} prompt-level none async'.format(tobe_activated)
+            cmd = 'install deactivate {}'.format(tobe_deactivated)
 
-        self.ctx.info("Activate package(s) pending")
-        self.ctx.post_status("Activate Package(s) Pending")
+        self.ctx.info("Deactivate package(s) pending")
+        self.ctx.post_status("Deactivate Package(s) Pending")
 
         install_activate_deactivate(self.ctx, cmd)
 
-        self.ctx.info("Activate package(s) done")
+        self.ctx.info("Deactivate package(s) done")
 
         # Refresh package information
         get_package(self.ctx)
