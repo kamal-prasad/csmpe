@@ -382,7 +382,6 @@ def install_activate_deactivate(ctx, cmd):
     # Seeing this message without the reboot prompt indicates a non-reload situation
     CONTINUE_IN_BACKGROUND = re.compile("Install operation will continue in the background")
 
-    # REBOOT_PROMPT = r"This install operation will reboot"
     REBOOT_PROMPT = re.compile("This install operation will reboot the sdr, continue")
 
     events = [CONTINUE_IN_BACKGROUND, REBOOT_PROMPT, ABORTED]

@@ -78,7 +78,8 @@ setup(
             '{} = csmpe.core_plugins.csm_check_config_filesystem.ios_xr.plugin:Plugin'.format(uuid4()),
 
             '{} = csmpe.core_plugins.csm_node_status_check.ios_xr.plugin:Plugin'.format(uuid4()),
-            '{} = csmpe.core_plugins.csm_node_status_check.ios_xr.plugin_exr:Plugin'.format(uuid4()),
+
+            '{} = csmpe.core_plugins.csm_node_status_check.exr.plugin:Plugin'.format(uuid4()),
 
             '{} = csmpe.core_plugins.csm_redundancy_check.ios_xr.plugin:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_error_core_check.ios_xr.plugin:Plugin'.format(uuid4()),

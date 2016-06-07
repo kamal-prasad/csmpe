@@ -91,18 +91,64 @@ def watch_operation(ctx, op_id=0):
 
 
 def parse_xr_show_platform(output):
+    """
+    ASR9K:
+    Node            Type                      State            Config State
+    -----------------------------------------------------------------------------
+    0/RSP0/CPU0     A9K-RSP440-SE(Active)     IOS XR RUN       PWR,NSHUT,MON
+    0/FT0/SP        ASR-9006-FAN              READY
+    0/1/CPU0        A9K-40GE-E                IOS XR RUN       PWR,NSHUT,MON
+    0/2/CPU0        A9K-MOD80-SE              UNPOWERED        NPWR,NSHUT,MON
+    0/3/CPU0        A9K-8T-L                  UNPOWERED        NPWR,NSHUT,MON
+    0/PS0/M0/SP     A9K-3KW-AC                READY            PWR,NSHUT,MON
+    0/PS0/M1/SP     A9K-3KW-AC                READY            PWR,NSHUT,MON
+
+    CRS:
+    Node          Type              PLIM               State           Config State
+    ------------- ----------------- ------------------ --------------- ---------------
+    0/0/CPU0      MSC-X             40-10GbE           IOS XR RUN      PWR,NSHUT,MON
+    0/1/SP        MSC-B(SP)         N/A                IOS XR RUN      PWR,NSHUT,MON
+    0/1/CPU0      MSC-B             Jacket Card        IOS XR RUN      PWR,NSHUT,MON
+    0/1/1         MSC-B(SPA)        1x10GE             OK              PWR,NSHUT,MON
+    0/1/2         MSC-B(SPA)        10X1GE             OK              PWR,NSHUT,MON
+    0/2/CPU0      FP-X              4-100GbE           IOS XR RUN      PWR,NSHUT,MON
+    0/3/CPU0      MSC-140G          N/A                UNPOWERED       NPWR,NSHUT,MON
+    0/4/CPU0      FP-X              N/A                UNPOWERED       NPWR,NSHUT,MON
+    0/7/CPU0      MSC-X             40-10GbE           IOS XR RUN      PWR,NSHUT,MON
+    0/8/CPU0      MSC-140G          N/A                UNPOWERED       NPWR,NSHUT,MON
+    0/14/CPU0     MSC-X             4-100GbE           IOS XR RUN      PWR,NSHUT,MON
+    0/RP0/CPU0    RP(Active)        N/A                IOS XR RUN      PWR,NSHUT,MON
+    0/RP1/CPU0    RP(Standby)       N/A                IOS XR RUN      PWR,NSHUT,MON
+
+    """
     inventory = {}
     lines = output.split('\n')
+    is_asr9k = True
 
     for line in lines:
         line = line.strip()
+
+        # CRS has the PLIM module
+        if 'PLIM' in line:
+            is_asr9k = False
+
         if len(line) > 0 and line[0].isdigit():
-            node = line[:15].strip()
-            entry = {
-                'type': line[16:41].strip(),
-                'state': line[42:58].strip(),
-                'config_state': line[59:].strip()
-            }
+            if is_asr9k:
+                node = line[:15].strip()
+                entry = {
+                    'type': line[16:41].strip(),
+                    'state': line[42:58].strip(),
+                    'config_state': line[59:].strip()
+                }
+            else:
+                # CRS case
+                node = line[:13].strip()
+                entry = {
+                    'type': line[14:31].strip(),
+                    'state': line[51:66].strip(),
+                    'config_state': line[67:].strip()
+                }
+
             inventory[node] = entry
     return inventory
 
@@ -151,7 +197,9 @@ def wait_for_reload(ctx):
         time_waited += poll_time
         if time_waited >= timeout:
             break
+
         time.sleep(poll_time)
+
         output = ctx.send(cmd)
         if xr_run in output:
             inventory = parse_xr_show_platform(output)
