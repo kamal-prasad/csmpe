@@ -87,6 +87,9 @@ setup(
             '{} = csmpe.core_plugins.csm_filesystem_check.ios_xr.disk_space_check:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_filesystem_check.ios_xr.filesystem_rw_check:Plugin'.format(uuid4()),
 
+            '{} = csmpe.core_plugins.csm_install_operations.asr9k_x64.add:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_install_operations.asr9k_x64.activate:Plugin'.format(uuid4()),
+
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.add:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.activate:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.commit:Plugin'.format(uuid4()),

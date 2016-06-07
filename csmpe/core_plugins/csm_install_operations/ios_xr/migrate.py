@@ -195,7 +195,7 @@ class Plugin(CSMPlugin):
         if host is None:
             self.ctx.error("No host selected.")
 
-        self.ctx.info("Run migration script to set boot mode and image path in device")
+        self.ctx.info("Run migration script to extract the image and boot files and set boot mode in device")
         self._run_migration_script()
 
         self.ctx.info("Reload device to boot eXR")

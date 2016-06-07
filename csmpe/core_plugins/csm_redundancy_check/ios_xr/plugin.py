@@ -49,7 +49,10 @@ class Plugin(CSMPlugin):
         Standby node in 0/RP1/CPU0 is ready
         Standby node in 0/RP1/CPU0 is NSR-ready
         """
-        output = self.ctx.send("admin show redundancy location all")
+        cmd = "show redundancy location all"
+        if self.ctx.os_type != "eXR":
+            cmd = "admin " + cmd
+        output = self.ctx.send(cmd)
         lines = output.split("\n", 50)
         if len(lines) < 6:
             self.ctx.error("Show redundancy output is insufficient.")

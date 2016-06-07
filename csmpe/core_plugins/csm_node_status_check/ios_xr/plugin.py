@@ -110,6 +110,7 @@ class Plugin(CSMPlugin):
                     break
         else:
             self.ctx.save_data("inventory", inventory)
+            print "load_data = " + str(self.ctx.load_data("inventory"))
             self.ctx.info("All nodes in valid state for upgrade")
             return True
 

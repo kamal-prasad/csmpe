@@ -2,9 +2,10 @@ import time
 import re
 import json
 
-SUPPORTED_HW_JSON = "migration_supported_hw.json"
+SUPPORTED_HW_JSON = "./static/documents/migration_supported_hw.json"
 
-NODE = "(\d+/(?:RS?P)?\d+)"
+ADMIN_RP = "\d+/RS?P\d+"
+ADMIN_LC = "\d+/\d+"
 
 
 def parse_exr_admin_show_platform(output):
@@ -15,7 +16,6 @@ def parse_exr_admin_show_platform(output):
     for line in lines:
         line = line.strip()
         if len(line) > 0 and line[0].isdigit():
-            print "line = *{}*".format(line)
             node = line[:10].strip()
             print "node = *{}*".format(node)
             node_type = line[10:34].strip(),
@@ -31,11 +31,25 @@ def get_all_supported_nodes(ctx, supported_cards):
     output = ctx.send("show platform")
     inventory = parse_exr_admin_show_platform(output)
 
-    node_pattern = re.compile(NODE)
+    rp_pattern = re.compile(ADMIN_RP)
+    lc_pattern = re.compile(ADMIN_LC)
+    supported_rp = supported_cards.get("RP")
+    if not supported_rp:
+        ctx.error("Missing supported hardware information for RP in {}.".format(SUPPORTED_HW_JSON))
+
+    supported_lc = supported_cards.get("LC")
+    if not supported_lc:
+        ctx.error("Missing supported hardware information for LC in {}.".format(SUPPORTED_HW_JSON))
+
     for node, node_type in inventory.items():
-        if node_pattern.match(node):
-            for card in supported_cards:
-                if card in node_type:
+        if rp_pattern.match(node):
+            for rp in supported_rp:
+                if rp in node_type:
+                    supported_nodes.append(node)
+                    break
+        elif lc_pattern.match(node):
+            for lc in supported_lc:
+                if lc in node_type:
                     supported_nodes.append(node)
                     break
     ctx.send("exit")
@@ -60,7 +74,7 @@ def wait_for_final_band(ctx):
 
     supported_nodes = get_all_supported_nodes(ctx, supported_hw.get(exr_version))
     # Wait for all nodes to Final Band
-    timeout = 1080
+    timeout = 1200
     poll_time = 20
     time_waited = 0
 
@@ -77,6 +91,7 @@ def wait_for_final_band(ctx):
             if node not in output:
                 all_nodes_present = False
                 break
+            print "supported node that is in show platform vm = " + str(node)
         if all_nodes_present and check_sw_status(output):
             return True
 

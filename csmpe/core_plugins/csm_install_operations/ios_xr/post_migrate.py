@@ -272,7 +272,7 @@ class Plugin(CSMPlugin):
 
         self.ctx.info("Waiting for all nodes to come to FINAL Band.")
         if not wait_for_final_band(self.ctx):
-            self.ctx.info("Warning: Not all nodes are in FINAL Band after 18 minutes.")
+            self.ctx.info("Warning: Not all nodes are in FINAL Band after 20 minutes.")
 
         self.ctx.info("Loading the migrated Calvados configuration first.")
         self.ctx.send("admin")
@@ -308,10 +308,6 @@ class Plugin(CSMPlugin):
             cmd_capture_plugin.run()
         except PluginError as e:
             self.ctx.info("Failed to capture 'show running-config' - ({}): {}".format(e.errno, e.strerror))
-        except Exception as inst:
-            print type(inst)     # the exception instance
-            print inst.args      # arguments stored in .args
-            print inst
 
         self._check_fpds_for_upgrade()
 

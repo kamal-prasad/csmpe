@@ -156,8 +156,8 @@ class Plugin(CSMPlugin):
 
     def _get_supported_iosxr_run_nodes(self, supported_hw):
         """Get names of all RSP's, RP's and Linecards in IOS-XR RUN state that are supported for migration."""
-        inventory = self.ctx.load_data("inventory")
-
+        inventory = self.ctx.load_data("inventory")[0]
+        print str(inventory)
         supported_iosxr_run_nodes = []
 
         node_pattern = re.compile(NODE)
@@ -560,7 +560,7 @@ class Plugin(CSMPlugin):
 
             for match in match_iter:
                 if match.group(1) in iosxr_run_nodes:
-                    if match.group(2) == "No":
+                    if match.group(2) == "Yes":
                         if fpdtype not in subtype_to_locations_need_upgrade:
                             subtype_to_locations_need_upgrade[fpdtype] = []
                         subtype_to_locations_need_upgrade[fpdtype].append(match.group(1))
@@ -595,11 +595,10 @@ class Plugin(CSMPlugin):
 
         match = re.search("fpd", active_packages)
 
-        if not match:
-            self.ctx.error("No FPD package is active on device. Please install the FPD package on device first.")
+        #if not match:
+        #    self.ctx.error("No FPD package is active on device. Please install the FPD package on device first.")
 
         if version < RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU:
-
             self.ctx.info("Checking if the FPD SMU has been installed...")
             pie_packages = []
             for package in packages:
@@ -629,9 +628,11 @@ class Plugin(CSMPlugin):
 
         if subtype_to_locations_need_upgrade:
 
+            print "subtype_to_locations_need_upgrade = " + str(subtype_to_locations_need_upgrade)
+
             # Force upgrade all FPD's in RP and Line card that need upgrade, with the FPD pie or both the FPD
             # pie and FPD SMU depending on release version
-            self._upgrade_all_fpds(subtype_to_locations_need_upgrade)
+            #self._upgrade_all_fpds(subtype_to_locations_need_upgrade)
 
         return True
 
@@ -920,7 +921,6 @@ class Plugin(CSMPlugin):
 
         if server is None:
             self.ctx.error("No server repository selected")
-
         try:
             override_hw_req = self.ctx.pre_migrate_override_hw_req
         except AttributeError:
@@ -955,6 +955,13 @@ class Plugin(CSMPlugin):
             self.ctx.info("Check if all RSP/RP/FAN/PEM on device are supported for migration.")
             self._check_if_rp_fan_pem_supported_and_in_valid_state(supported_hw[exr_version])
 
+        try:
+            node_status_plugin = NodeStatusPlugin(self.ctx)
+            node_status_plugin.run()
+        except PluginError:
+            self.ctx.error("Not all nodes are in valid states. Pre-Migrate aborted. " +
+                           "Please check session.log to trouble-shoot.")
+
         iosxr_run_nodes = self._get_supported_iosxr_run_nodes(supported_hw[exr_version])
 
         if len(iosxr_run_nodes) == 0:
@@ -973,12 +980,6 @@ class Plugin(CSMPlugin):
         if version < MINIMUM_RELEASE_VERSION_FOR_MIGRATION:
             self.ctx.error("The minimal release version required for migration is 5.3.3. " +
                            "Please upgrade to at lease R5.3.3 before scheduling migration.")
-        try:
-            node_status_plugin = NodeStatusPlugin(self.ctx)
-            node_status_plugin.run()
-        except PluginError:
-            self.ctx.error("Not all nodes are in valid states. Pre-Migrate aborted. " +
-                           "Please check session.log to trouble-shoot.")
 
         self._ping_repository_check(server_repo_url)
 
