@@ -82,8 +82,10 @@ class Plugin(CSMPlugin):
         """
         operation_id = None
         if hasattr(self.ctx, 'operation_id'):
-            self.ctx.info("Using the operation ID: {}".format(self.ctx.operation_id))
-            operation_id = self.ctx.operation_id
+            if self.ctx.operation_id != -1:
+                self.ctx.info("Using the operation ID: {}".format(self.ctx.operation_id))
+                operation_id = self.ctx.operation_id
+
         if operation_id is None or operation_id == -1:
             tobe_activated = self.get_tobe_activated_pkg_list()
             if not tobe_activated:

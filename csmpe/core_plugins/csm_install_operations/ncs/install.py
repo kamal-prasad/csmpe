@@ -114,24 +114,42 @@ def watch_operation(ctx, op_id=0):
             break
 
 
-def parse_xr_show_platform(output):
+def parse_show_platform(output):
+    """
+    Platform: NCS6K
+    RP/0/RP0/CPU0:Deploy#show platform
+    Node              Type                       State             Config state
+    --------------------------------------------------------------------------------
+    0/2/CPU0          NC6-10X100G-M-P            IOS XR RUN        NSHUT
+    0/RP0/CPU0        NC6-RP(Active)             IOS XR RUN        NSHUT
+    0/RP1/CPU0        NC6-RP(Standby)            IOS XR RUN        NSHUT
+
+    Platform: ASR9K-X64
+
+    """
     inventory = {}
     lines = output.split('\n')
-
     for line in lines:
         line = line.strip()
         if len(line) > 0 and line[0].isdigit():
-            node = line[:15].strip()
+            states = re.split('\s\s+', line)
+
+            if not re.search('CPU\d+$', states[0]):
+                continue
+
+            node, node_type, state, config_state = states
+
             entry = {
-                'type': line[16:41].strip(),
-                'state': line[42:58].strip(),
-                'config_state': line[59:].strip()
+                'type': node_type,
+                'state': state,
+                'config_state': config_state
             }
             inventory[node] = entry
+
     return inventory
 
 
-def validate_xr_node_state(inventory):
+def validate_node_state(inventory):
     valid_state = [
         'IOS XR RUN',
         'PRESENT',
@@ -184,8 +202,8 @@ def wait_for_reload(ctx):
         time.sleep(poll_time)
         output = ctx.send(cmd)
         if xr_run in output:
-            inventory = parse_xr_show_platform(output)
-            if validate_xr_node_state(inventory):
+            inventory = parse_show_platform(output)
+            if validate_node_state(inventory):
                 ctx.info("All nodes in desired state")
                 return True
 
@@ -382,7 +400,6 @@ def install_activate_deactivate(ctx, cmd):
     # Seeing this message without the reboot prompt indicates a non-reload situation
     CONTINUE_IN_BACKGROUND = re.compile("Install operation will continue in the background")
 
-    # REBOOT_PROMPT = r"This install operation will reboot"
     REBOOT_PROMPT = re.compile("This install operation will reboot the sdr, continue")
 
     events = [CONTINUE_IN_BACKGROUND, REBOOT_PROMPT, ABORTED]

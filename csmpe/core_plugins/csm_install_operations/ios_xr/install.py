@@ -33,81 +33,122 @@ install_error_pattern = re.compile("Error:    (.*)$", re.MULTILINE)
 
 
 def log_install_errors(ctx, output):
-        errors = re.findall(install_error_pattern, output)
-        for line in errors:
-            ctx.warning(line)
+    errors = re.findall(install_error_pattern, output)
+    for line in errors:
+        ctx.warning(line)
 
 
 def watch_operation(ctx, op_id=0):
-        """
-        Function to keep watch on progress of operation
-        and report KB downloaded.
+    """
+    Function to keep watch on progress of operation
+    and report KB downloaded.
 
-        """
-        no_install = r"There are no install requests in operation"
-        #  failed_oper = r"Install operation (\d+) failed"
-        op_progress = r"The operation is (\d+)% complete"
-        op_download = r"(.*)KB downloaded: Download in progress"
-        success = "Install operation {} completed successfully".format(op_id)
+    """
+    no_install = r"There are no install requests in operation"
+    #  failed_oper = r"Install operation (\d+) failed"
+    op_progress = r"The operation is (\d+)% complete"
+    op_download = r"(.*)KB downloaded: Download in progress"
+    success = "Install operation {} completed successfully".format(op_id)
 
-        cmd_show_install_request = "admin show install request"
+    cmd_show_install_request = "admin show install request"
 
-        ctx.info("Watching the operation {} to complete".format(op_id))
+    ctx.info("Watching the operation {} to complete".format(op_id))
 
-        propeller = itertools.cycle(["|", "/", "-", "\\", "|", "/", "-", "\\"])
+    propeller = itertools.cycle(["|", "/", "-", "\\", "|", "/", "-", "\\"])
 
-        last_status = None
-        finish = False
-        while not finish:
-            try:
-                # this is to catch the successful operation as soon as possible
-                ctx.send("", wait_for_string=success, timeout=20)
-                finish = True
-            except ctx.CommandTimeoutError:
-                pass
+    last_status = None
+    finish = False
+    while not finish:
+        try:
+            # this is to catch the successful operation as soon as possible
+            ctx.send("", wait_for_string=success, timeout=20)
+            finish = True
+        except ctx.CommandTimeoutError:
+            pass
 
-            message = ""
-            output = ctx.send(cmd_show_install_request)
-            if op_id in output:
-                # FIXME reconsider the logic here
-                result = re.search(op_progress, output)
-                if result:
-                    status = result.group(0)
-                    message = "{} {}".format(propeller.next(), status)
+        message = ""
+        output = ctx.send(cmd_show_install_request)
+        if op_id in output:
+            # FIXME reconsider the logic here
+            result = re.search(op_progress, output)
+            if result:
+                status = result.group(0)
+                message = "{} {}".format(propeller.next(), status)
 
-                result = re.search(op_download, output)
-                if result:
-                    status = result.group(0)
-                    message += "\r\n<br>{}".format(status)
+            result = re.search(op_download, output)
+            if result:
+                status = result.group(0)
+                message += "\r\n<br>{}".format(status)
 
-                if message != last_status:
-                    ctx.post_status(message)
-                    last_status = message
+            if message != last_status:
+                ctx.post_status(message)
+                last_status = message
 
-            if no_install in output:
-                break
+        if no_install in output:
+            break
 
-        return output
+    return output
 
 
-def parse_xr_show_platform(output):
+def parse_show_platform(ctx, output):
+    """
+    ASR9K:
+    Node            Type                      State            Config State
+    -----------------------------------------------------------------------------
+    0/RSP0/CPU0     A9K-RSP440-SE(Active)     IOS XR RUN       PWR,NSHUT,MON
+    0/FT0/SP        ASR-9006-FAN              READY
+    0/1/CPU0        A9K-40GE-E                IOS XR RUN       PWR,NSHUT,MON
+    0/2/CPU0        A9K-MOD80-SE              UNPOWERED        NPWR,NSHUT,MON
+    0/3/CPU0        A9K-8T-L                  UNPOWERED        NPWR,NSHUT,MON
+    0/PS0/M0/SP     A9K-3KW-AC                READY            PWR,NSHUT,MON
+    0/PS0/M1/SP     A9K-3KW-AC                READY            PWR,NSHUT,MON
+
+    CRS:
+    Node          Type              PLIM               State           Config State
+    ------------- ----------------- ------------------ --------------- ---------------
+    0/0/CPU0      MSC-X             40-10GbE           IOS XR RUN      PWR,NSHUT,MON
+    0/1/SP        MSC-B(SP)         N/A                IOS XR RUN      PWR,NSHUT,MON
+    0/1/CPU0      MSC-B             Jacket Card        IOS XR RUN      PWR,NSHUT,MON
+    0/1/1         MSC-B(SPA)        1x10GE             OK              PWR,NSHUT,MON
+    0/1/2         MSC-B(SPA)        10X1GE             OK              PWR,NSHUT,MON
+    0/2/CPU0      FP-X              4-100GbE           IOS XR RUN      PWR,NSHUT,MON
+    0/3/CPU0      MSC-140G          N/A                UNPOWERED       NPWR,NSHUT,MON
+    0/4/CPU0      FP-X              N/A                UNPOWERED       NPWR,NSHUT,MON
+    0/7/CPU0      MSC-X             40-10GbE           IOS XR RUN      PWR,NSHUT,MON
+    0/8/CPU0      MSC-140G          N/A                UNPOWERED       NPWR,NSHUT,MON
+    0/14/CPU0     MSC-X             4-100GbE           IOS XR RUN      PWR,NSHUT,MON
+    0/RP0/CPU0    RP(Active)        N/A                IOS XR RUN      PWR,NSHUT,MON
+    0/RP1/CPU0    RP(Standby)       N/A                IOS XR RUN      PWR,NSHUT,MON
+
+    """
+    host = ctx.get_host
     inventory = {}
     lines = output.split('\n')
-
     for line in lines:
         line = line.strip()
         if len(line) > 0 and line[0].isdigit():
-            node = line[:15].strip()
+            states = re.split('\s\s+', line)
+
+            if not re.search('CPU\d+$', states[0]):
+                continue
+            if host.family == 'ASR9K':
+                node, node_type, state, config_state = states
+            elif host.family == 'CRS':
+                node, node_type, plim, state, config_state = states
+            else:
+                ctx.warning("Unsupported platform {}".format(host.family))
+                return None
             entry = {
-                'type': line[16:41].strip(),
-                'state': line[42:58].strip(),
-                'config_state': line[59:].strip()
+                'type': node_type,
+                'state': state,
+                'config_state': config_state
             }
             inventory[node] = entry
+
     return inventory
 
 
-def validate_xr_node_state(inventory):
+def validate_node_state(inventory):
     valid_state = [
         'IOS XR RUN',
         'PRESENT',
@@ -151,11 +192,13 @@ def wait_for_reload(ctx):
         time_waited += poll_time
         if time_waited >= timeout:
             break
+
         time.sleep(poll_time)
+
         output = ctx.send(cmd)
         if xr_run in output:
-            inventory = parse_xr_show_platform(output)
-            if validate_xr_node_state(inventory):
+            inventory = parse_show_platform(ctx, output)
+            if validate_node_state(inventory):
                 ctx.info("All nodes in desired state")
                 return True
 
