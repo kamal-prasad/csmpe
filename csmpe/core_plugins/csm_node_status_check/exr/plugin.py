@@ -47,53 +47,32 @@ class Plugin(CSMPlugin):
                 states = re.split('\s\s+', line)
                 if not re.search('CPU\d+$', states[0]):
                     continue
-                node, node_type, state, admin_state, config_state = states
+
+                node, node_type, state, config_state = states
+
                 entry = {
                     'type': node_type,
                     'state': state,
-                    'admin_state': admin_state,
                     'config_state': config_state
                 }
                 inventory[node] = entry
+
         return inventory
 
     def run(self):
         """
         Platform: NCS6K
-        sysadmin-vm:0_RP0:NCS-Deploy2# show platform
-        Mon May  16 21:41:08.690 UTC
-        Location  Card Type               HW State      SW State      Config State
-        ----------------------------------------------------------------------------
-        0/0       NC6-10X100G-M-K         OPERATIONAL   SW_INACTIVE   NSHUT
-        0/2       NC6-10X100G-M-P         OPERATIONAL   OPERATIONAL   NSHUT
-        0/3       NC6-60X10GE-M-S         OPERATIONAL   SW_INACTIVE   NSHUT
-        0/RP0     NC6-RP                  OPERATIONAL   OPERATIONAL   NSHUT
-        0/RP1     NC6-RP                  OPERATIONAL   OPERATIONAL   NSHUT
-        0/FC0     NC6-FC                  OPERATIONAL   N/A           NSHUT
-        0/FC1     NC6-FC                  OPERATIONAL   N/A           NSHUT
-        0/FC2     NC6-FC                  OPERATIONAL   N/A           NSHUT
-        0/FC3     NC6-FC                  OPERATIONAL   N/A           NSHUT
-        0/CI0     NCS-CRFT                OPERATIONAL   N/A           NSHUT
-        0/FT0     NC6-FANTRAY             OPERATIONAL   N/A           NSHUT
-        0/PT0     NCS-DC-PWRTRAY          OPERATIONAL   N/A           NSHUT
-        0/PT1     NCS-DC-PWRTRAY          OPERATIONAL   N/A           NSHUT
-        0/PT2     NCS-DC-PWRTRAY          OPERATIONAL   N/A           NSHUT
-        0/PT3     NCS-DC-PWRTRAY          OPERATIONAL   N/A           NSHUT
-        0/PT4     NCS-DC-PWRTRAY          OPERATIONAL   N/A           NSHUT
+        RP/0/RP0/CPU0:Deploy#show platform
+        Node              Type                       State             Config state
+        --------------------------------------------------------------------------------
+        0/2/CPU0          NC6-10X100G-M-P            IOS XR RUN        NSHUT
+        0/RP0/CPU0        NC6-RP(Active)             IOS XR RUN        NSHUT
+        0/RP1/CPU0        NC6-RP(Standby)            IOS XR RUN        NSHUT
 
         Platform: ASR9K-X64
-        sysadmin-vm:0_RSP0# show platform
-        Thu May  19 05:15:38.345 UTC
-        Location  Card Type               HW State      SW State      Config State
-        ----------------------------------------------------------------------------
-        0/RSP0    A9K-RSP880-SE           OPERATIONAL   OPERATIONAL   NSHUT
-        0/RSP1    A9K-RSP880-SE           POWERED_OFF   SW_INACTIVE   NSHUT
-        """
 
-        # FIXME: Break the command to 3 pieces as condoor currently cannot handle it.
-        self.ctx.send("admin")
+        """
         output = self.ctx.send("show platform")
-        self.ctx.send("exit")
 
         inventory = self._parse_show_platform(output)
         valid_state = [
