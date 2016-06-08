@@ -69,6 +69,7 @@ setup(
             '{} = csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_get_software_packages.ios_xe.plugin:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_get_software_packages.nx_os.plugin:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_get_software_packages.exr.plugin:Plugin'.format(uuid4()),
 
             '{} = csmpe.core_plugins.csm_config_capture.plugin:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_custom_commands_capture.plugin:Plugin'.format(uuid4()),

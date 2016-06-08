@@ -24,44 +24,26 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
-from install import install_add_remove
-from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
-    """This plugin removes inactive packages from the device."""
-    name = "Install Remove Plugin"
-    platforms = {'NCS6K'}
-    phases = {'Remove'}
+    """This plugin retrieves software information from the device."""
+    name = "Get Software Packages Plugin"
+    platforms = {'ASR9K', 'NCS6K'}
+    phases = {'Get-Software-Packages'}
+    os = {'eXR'}
 
     def run(self):
-        packages = self.ctx.software_packages
-        if packages is None:
-            self.ctx.error("No package list provided")
-            return
-
-        pkgs = SoftwarePackage.from_package_list(packages)
-
-        installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("show install inactive"))
-        packages_to_remove = pkgs & installed_inact
-
-        if not packages_to_remove:
-            self.ctx.warning("Packages already removed. Nothing to be removed")
-            return
-
-        to_remove = " ".join(map(str, packages_to_remove))
-
-        cmd = 'install remove {}'.format(to_remove)
-
-        self.ctx.info("Remove Package(s) Pending")
-        self.ctx.post_status("Remove Package(s) Pending")
-
-        install_add_remove(self.ctx, cmd)
-
-        self.ctx.info("Package(s) Removed Successfully")
-
-        # Refresh package information
         get_package(self.ctx)
 
+
+def get_package(ctx):
+    # eXR does not require the 'admin' keyword. In fact, using 'admin' shows
+    # only the admin package, not others.
+    if hasattr(ctx, 'active_cli'):
+        ctx.active_cli = ctx.send("show install active")
+    if hasattr(ctx, 'inactive_cli'):
+        ctx.inactive_cli = ctx.send("show install inactive")
+    if hasattr(ctx, 'committed_cli'):
+        ctx.committed_cli = ctx.send("show install committed")
