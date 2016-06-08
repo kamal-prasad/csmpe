@@ -29,7 +29,7 @@ import re
 
 from csmpe.plugins import CSMPlugin
 from install import watch_operation, log_install_errors
-from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
+from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
 
 class Plugin(CSMPlugin):

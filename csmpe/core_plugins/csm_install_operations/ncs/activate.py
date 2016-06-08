@@ -28,7 +28,7 @@
 from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
 from install import install_activate_deactivate
-from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
+from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
