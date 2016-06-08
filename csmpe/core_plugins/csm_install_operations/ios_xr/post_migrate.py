@@ -31,7 +31,7 @@ import time
 from csmpe.plugins import CSMPlugin
 from condoor.exceptions import CommandTimeoutError, CommandSyntaxError
 from csmpe.context import PluginError
-from migration_lib import wait_for_final_band
+from migration_lib import wait_for_final_band, log_and_post_status
 from csmpe.core_plugins.csm_custom_commands_capture.plugin import Plugin as CmdCapturePlugin
 from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
 from pre_migrate import XR_CONFIG_ON_DEVICE, ADMIN_CAL_CONFIG_ON_DEVICE, ADMIN_XR_CONFIG_ON_DEVICE
@@ -141,8 +141,8 @@ class Plugin(CSMPlugin):
             return self._handle_failed_commit(output, commit_with_best_effort, filename)
 
         if "No configuration changes to commit" in output:
-            self.ctx.info("No configuration changes in /eusbb/{} were committed. ".format(filename) +
-                          "Please check session.log.")
+            log_and_post_status(self.ctx, "No configuration changes in /eusbb/{} were committed. ".format(filename) +
+                                "Please check session.log.")
         if "Abort" in output:
             self._quit_config()
             self.ctx.error("Failure to commit configuration. Please check session.log for errors.")
@@ -183,10 +183,12 @@ class Plugin(CSMPlugin):
 
         elif commit_with_best_effort == 1:
             output = self.ctx.send("commit best-effort force")
-            self.ctx.info("Committed configurations with best-effort. Please check session.log for result.")
+            log_and_post_status(self.ctx,
+                                "Committed configurations with best-effort. Please check session.log for result.")
             if "No configuration changes to commit" in output:
-                self.ctx.info("No configuration changes in /eusbb/{} were committed. ".format(filename) +
-                              "Please check session.log for errors.")
+                log_and_post_status(self.ctx,
+                                    "No configuration changes in /eusbb/{} were committed. ".format(filename) +
+                                    "Please check session.log for errors.")
             self.ctx.send("end")
 
         return True
@@ -237,7 +239,8 @@ class Plugin(CSMPlugin):
             num_need_reload = len(re.findall("RLOAD REQ", output))
             if len(re.findall("CURRENT", output)) + num_need_reload >= num_fpds:
                 if num_need_reload > 0:
-                    self.ctx.info("Finished upgrading FPD(s). Now reloading the device to complete the upgrade.")
+                    log_and_post_status(self.ctx,
+                                        "Finished upgrading FPD(s). Now reloading the device to complete the upgrade.")
                     self.ctx.send("exit")
                     return self._reload_all()
                 return True
@@ -255,11 +258,11 @@ class Plugin(CSMPlugin):
         """Wait for all nodes to come up with max timeout as 18 min"""
         # device.disconnect()
         # device.reconnect(max_timeout=300)
-        self.ctx.info("Waiting for all nodes to come to FINAL Band.")
+        log_and_post_status(self.ctx, "Waiting for all nodes to come to FINAL Band.")
         if wait_for_final_band(self.ctx):
-            self.ctx.info("All nodes are in FINAL Band.")
+            log_and_post_status(self.ctx, "All nodes are in FINAL Band.")
         else:
-            self.ctx.info("Warning: Not all nodes went to FINAL Band.")
+            log_and_post_status(self.ctx, "Warning: Not all nodes went to FINAL Band.")
 
         return True
 
@@ -270,11 +273,11 @@ class Plugin(CSMPlugin):
         except AttributeError:
             self.ctx.error("No configuration handling option selected when scheduling post-migrate.")
 
-        self.ctx.info("Waiting for all nodes to come to FINAL Band.")
+        log_and_post_status(self.ctx, "Waiting for all nodes to come to FINAL Band.")
         if not wait_for_final_band(self.ctx):
-            self.ctx.info("Warning: Not all nodes are in FINAL Band after 20 minutes.")
+            log_and_post_status(self.ctx, "Warning: Not all nodes are in FINAL Band after 20 minutes.")
 
-        self.ctx.info("Loading the migrated Calvados configuration first.")
+        log_and_post_status(self.ctx, "Loading the migrated Calvados configuration first.")
         self.ctx.send("admin")
         self._copy_file_from_eusb_to_harddisk(ADMIN_CAL_CONFIG_ON_DEVICE)
         self._load_admin_config(ADMIN_CAL_CONFIG_ON_DEVICE)
@@ -284,20 +287,24 @@ class Plugin(CSMPlugin):
             output = self.ctx.send("show running-config", timeout=2200)
             file_name = self.ctx.save_to_file("admin show running-config", output)
             if file_name is None:
-                self.ctx.info("Unable to save '{}' output to file: {}".format("admin show running-config", file_name))
+                log_and_post_status(self.ctx,
+                                    "Unable to save '{}' output to file: {}".format("admin show running-config",
+                                                                                    file_name))
             else:
-                self.ctx.info("Output of '{}' command saved to file: {}".format("admin show running-config", file_name))
+                log_and_post_status(self.ctx,
+                                    "Output of '{}' command saved to file: {}".format("admin show running-config",
+                                                                                      file_name))
         except Exception as e:
-            self.ctx.info(str(type(e)) + " when trying to capture 'admin show running-config'.")
+            log_and_post_status(self.ctx, str(type(e)) + " when trying to capture 'admin show running-config'.")
 
         self.ctx.send("exit")
 
-        self.ctx.info("Loading the admin IOS-XR configuration on device.")
+        log_and_post_status(self.ctx, "Loading the admin IOS-XR configuration on device.")
         file_exists = self._copy_file_from_eusb_to_harddisk(ADMIN_XR_CONFIG_ON_DEVICE, optional=True)
         if file_exists:
             self._load_nonadmin_config(ADMIN_XR_CONFIG_ON_DEVICE, best_effort_config)
 
-        self.ctx.info("Loading the IOS-XR configuration on device.")
+        log_and_post_status(self.ctx, "Loading the IOS-XR configuration on device.")
         file_exists = self._copy_file_from_eusb_to_harddisk(XR_CONFIG_ON_DEVICE)
         if file_exists:
             self._load_nonadmin_config(XR_CONFIG_ON_DEVICE, best_effort_config)
@@ -307,7 +314,8 @@ class Plugin(CSMPlugin):
             cmd_capture_plugin = CmdCapturePlugin(self.ctx)
             cmd_capture_plugin.run()
         except PluginError as e:
-            self.ctx.info("Failed to capture 'show running-config' - ({}): {}".format(e.errno, e.strerror))
+            log_and_post_status(self.ctx,
+                                "Failed to capture 'show running-config' - ({}): {}".format(e.errno, e.strerror))
 
         self._check_fpds_for_upgrade()
 
@@ -316,7 +324,8 @@ class Plugin(CSMPlugin):
             cmd_capture_plugin = CmdCapturePlugin(self.ctx)
             cmd_capture_plugin.run()
         except PluginError as e:
-            self.ctx.info("Failed to capture 'show platform' - ({}): {}".format(e.errno, e.strerror))
+            log_and_post_status(self.ctx,
+                                "Failed to capture 'show platform' - ({}): {}".format(e.errno, e.strerror))
 
         # Refresh package information
         get_package(self.ctx)

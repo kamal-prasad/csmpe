@@ -90,6 +90,9 @@ setup(
 
             '{} = csmpe.core_plugins.csm_install_operations.asr9k_x64.add:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_install_operations.asr9k_x64.activate:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_install_operations.asr9k_x64.commit:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_install_operations.asr9k_x64.deactivate:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_install_operations.asr9k_x64.remove:Plugin'.format(uuid4()),
 
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.add:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.activate:Plugin'.format(uuid4()),

@@ -7,6 +7,9 @@ SUPPORTED_HW_JSON = "./static/documents/migration_supported_hw.json"
 ADMIN_RP = "\d+/RS?P\d+"
 ADMIN_LC = "\d+/\d+"
 
+def log_and_post_status(ctx, msg):
+    ctx.info(msg)
+    ctx.post_status(msg)
 
 def parse_exr_admin_show_platform(output):
     """Get all RSP/RP/LC string node names matched with the card type."""

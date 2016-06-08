@@ -166,6 +166,7 @@ class CSMPluginManager(object):
         self._ctx.current_plugin = None
         self._ctx.success = True
         self._ctx.info("CSM Plugin Manager finished")
+        self._ctx.disconnect()
         return results
 
     def set_platform_filter(self, platform):

@@ -35,7 +35,7 @@ from condoor.controllers.protocols.base import PASSWORD_PROMPT, USERNAME_PROMPT,
                                                PASSWORD_OK, PRESS_RETURN, UNABLE_TO_CONNECT
 from condoor.controllers.protocols.telnet import ESCAPE_CHAR, CONNECTION_REFUSED
 from condoor.exceptions import ConnectionError, ConnectionAuthenticationError
-from migration_lib import wait_for_final_band
+from migration_lib import wait_for_final_band, log_and_post_status
 
 XR_PROMPT = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
 
@@ -89,13 +89,13 @@ class Plugin(CSMPlugin):
         if "No such file" in output:
             self.ctx.error("Migration script failed to back up the running config. Please check session.log.")
         else:
-            self.ctx.info("The running-config is backed up in {}".format(SCRIPT_BACKUP_CONFIG))
+            log_and_post_status(self.ctx, "The running-config is backed up in {}".format(SCRIPT_BACKUP_CONFIG))
 
         output = self.ctx.send('dir {}'.format(SCRIPT_BACKUP_ADMIN_CONFIG))
         if "No such file" in output:
             self.ctx.error("Migration script failed to back up the admin running config. Please check session.log.")
         else:
-            self.ctx.info("The admin running-config is backed up in {}".format(SCRIPT_BACKUP_CONFIG))
+            log_and_post_status(self.ctx, "The admin running-config is backed up in {}".format(SCRIPT_BACKUP_CONFIG))
 
     def _configure_authentication(self, host):
         """
@@ -177,11 +177,11 @@ class Plugin(CSMPlugin):
         """Wait for all nodes to come up with max timeout as 18 minutes after the first RSP/RP comes up."""
         self._configure_authentication(host)
 
-        self.ctx.info("Waiting for all nodes to come to FINAL Band.")
+        log_and_post_status(self.ctx, "Waiting for all nodes to come to FINAL Band.")
         if wait_for_final_band(self.ctx):
-            self.ctx.info("All nodes are in FINAL Band.")
+            log_and_post_status(self.ctx, "All nodes are in FINAL Band.")
         else:
-            self.ctx.info("Warning: Not all nodes went to FINAL Band.")
+            log_and_post_status(self.ctx, "Warning: Not all nodes went to FINAL Band.")
 
         return True
 
@@ -195,10 +195,11 @@ class Plugin(CSMPlugin):
         if host is None:
             self.ctx.error("No host selected.")
 
-        self.ctx.info("Run migration script to extract the image and boot files and set boot mode in device")
+        log_and_post_status(self.ctx,
+                            "Run migration script to extract the image and boot files and set boot mode in device")
         self._run_migration_script()
 
-        self.ctx.info("Reload device to boot eXR")
+        log_and_post_status(self.ctx, "Reload device to boot eXR")
         self._reload_all(host)
 
         try:
@@ -206,6 +207,6 @@ class Plugin(CSMPlugin):
             cmd_capture_plugin = CmdCapturePlugin(self.ctx)
             cmd_capture_plugin.run()
         except PluginError as e:
-            self.ctx.info("Failed to capture 'show platform' - ({}): {}".format(e.errno, e.strerror))
+            log_and_post_status(self.ctx, "Failed to capture 'show platform' - ({}): {}".format(e.errno, e.strerror))
 
         return True

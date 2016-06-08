@@ -41,7 +41,7 @@ from csmpe.core_plugins.csm_node_status_check.ios_xr.plugin import Plugin as Nod
 from add import Plugin as InstallAddPlugin
 from activate import Plugin as InstallActivatePlugin
 from commit import Plugin as InstallCommitPlugin
-from migration_lib import SUPPORTED_HW_JSON
+from migration_lib import SUPPORTED_HW_JSON, log_and_post_status
 
 MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.3"
 RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU = "6.1.1"
@@ -214,54 +214,55 @@ class Plugin(CSMPlugin):
         """
 
         server_type = server.server_type
+        selected_server_directory = self.ctx._csm.install_job.server_directory
         if server_type == ServerType.TFTP_SERVER:
             tftp_server = TFTPServer(server)
             for x in range(0, len(sourcefiles)):
-                self.ctx.info("Coping file {} to {}/{}/{}.".format(sourcefiles[x],
-                                                                   server.server_directory,
-                                                                   self.ctx._csm.install_job.server_directory,
-                                                                   destfilenames[x]))
+                log_and_post_status(self.ctx, "Coping file {} to {}/{}/{}.".format(sourcefiles[x],
+                                                                                   server.server_directory,
+                                                                                   selected_server_directory,
+                                                                                   destfilenames[x]))
                 try:
                     tftp_server.upload_file(sourcefiles[x], destfilenames[x],
-                                            sub_directory=self.ctx._csm.install_job.server_directory)
+                                            sub_directory=selected_server_directory)
                 except:
                     self.ctx.error("Exception was thrown while " +
                                    "copying file {} to {}/{}/{}.".format(sourcefiles[x],
                                                                          server.server_directory,
-                                                                         self.ctx._csm.install_job.server_directory,
+                                                                         selected_server_directory,
                                                                          destfilenames[x]))
 
         elif server_type == ServerType.FTP_SERVER:
             ftp_server = FTPServer(server)
             for x in range(0, len(sourcefiles)):
-                self.ctx.info("Coping file {} to {}/{}/{}.".format(sourcefiles[x],
-                                                                   server.server_directory,
-                                                                   self.ctx._csm.install_job.server_directory,
-                                                                   destfilenames[x]))
+                log_and_post_status(self.ctx, "Coping file {} to {}/{}/{}.".format(sourcefiles[x],
+                                                                                   server.server_directory,
+                                                                                   selected_server_directory,
+                                                                                   destfilenames[x]))
                 try:
                     ftp_server.upload_file(sourcefiles[x], destfilenames[x],
-                                           sub_directory=self.ctx._csm.install_job.server_directory)
+                                           sub_directory=selected_server_directory)
                 except:
                     self.ctx.error("Exception was thrown while " +
                                    "copying file {} to {}/{}/{}.".format(sourcefiles[x],
                                                                          server.server_directory,
-                                                                         self.ctx._csm.install_job.server_directory,
+                                                                         selected_server_directory,
                                                                          destfilenames[x]))
         elif server_type == ServerType.SFTP_SERVER:
             sftp_server = SFTPServer(server)
             for x in range(0, len(sourcefiles)):
-                self.ctx.info("Coping file {} to {}/{}/{}.".format(sourcefiles[x],
-                                                                   server.server_directory,
-                                                                   self.ctx._csm.install_job.server_directory,
-                                                                   destfilenames[x]))
+                log_and_post_status(self.ctx, "Coping file {} to {}/{}/{}.".format(sourcefiles[x],
+                                                                                   server.server_directory,
+                                                                                   selected_server_directory,
+                                                                                   destfilenames[x]))
                 try:
                     sftp_server.upload_file(sourcefiles[x], destfilenames[x],
-                                            sub_directory=self.ctx._csm.install_job.server_directory)
+                                            sub_directory=selected_server_directory)
                 except:
                     self.ctx.error("Exception was thrown while " +
                                    "copying file {} to {}/{}/{}.".format(sourcefiles[x],
                                                                          server.server_directory,
-                                                                         self.ctx._csm.install_job.server_directory,
+                                                                         selected_server_directory,
                                                                          destfilenames[x]))
         else:
             self.ctx.error("Pre-Migrate does not support {} server repository.".format(server_type))
@@ -339,9 +340,9 @@ class Plugin(CSMPlugin):
                 (ERROR_COPYING, [0, 1, 2, 3], -1, error, 0),
             ]
 
-            self.ctx.info("Copying {}/{} to {} on device".format(repository,
-                                                                 source_filenames[x],
-                                                                 dest_files[x]))
+            log_and_post_status(self.ctx, "Copying {}/{} to {} on device".format(repository,
+                                                                                 source_filenames[x],
+                                                                                 dest_files[x]))
 
             if not self.ctx.run_fsm("Copy file from tftp/ftp to device", command, events, transitions, timeout=20):
                 self.ctx.error("Error copying {}/{} to {} on device".format(repository,
@@ -426,9 +427,9 @@ class Plugin(CSMPlugin):
                 (DOWNLOAD_ABORTED, [0, 1, 2], -1, error, 0),
             ]
 
-            self.ctx.info("Copying {}/{} to {} on device".format(source_path,
-                                                                 source_filenames[x],
-                                                                 dest_files[x]))
+            log_and_post_status(self.ctx, "Copying {}/{} to {} on device".format(source_path,
+                                                                                 source_filenames[x],
+                                                                                 dest_files[x]))
 
             if not self.ctx.run_fsm("Copy file from sftp to device", command, events, transitions, timeout=20):
                 self.ctx.error("Error copying {}/{} to {} on device".format(source_path,
@@ -504,15 +505,17 @@ class Plugin(CSMPlugin):
         if conversion_success:
 
             if self._all_configs_supported(nox_output):
-                self.ctx.info("Configuration {} was migrated successfully. ".format(filename) +
-                              "No unsupported configurations found.")
+                log_and_post_status(self.ctx, "Configuration {} was migrated successfully. ".format(filename) +
+                                    "No unsupported configurations found.")
             else:
                 self._create_config_logs(os.path.join(fileloc, filename.split(".")[0] + ".csv"),
                                          supported_log_name, unsupported_log_name,
                                          hostname, filename)
 
-                self.ctx.info("Configurations that are unsupported in eXR were removed in {}. ".format(filename) +
-                              "Please look into {} and {}.".format(unsupported_log_name, supported_log_name))
+                log_and_post_status(self.ctx, "Configurations that are unsupported in eXR were removed in " +
+                                    "{}. Please look into {} and {}.".format(filename,
+                                                                             unsupported_log_name,
+                                                                             supported_log_name))
         else:
             self._create_config_logs(os.path.join(fileloc, filename.split(".")[0] + ".csv"),
                                      supported_log_name, unsupported_log_name, hostname, filename)
@@ -590,7 +593,7 @@ class Plugin(CSMPlugin):
         :return: True if no error occurred.
         """
 
-        self.ctx.info("Checking if FPD package is actively installed...")
+        log_and_post_status(self.ctx, "Checking if FPD package is actively installed...")
         active_packages = self.ctx.send("show install active summary")
 
         match = re.search("fpd", active_packages)
@@ -599,7 +602,7 @@ class Plugin(CSMPlugin):
         #    self.ctx.error("No FPD package is active on device. Please install the FPD package on device first.")
 
         if version < RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU:
-            self.ctx.info("Checking if the FPD SMU has been installed...")
+            log_and_post_status(self.ctx, "Checking if the FPD SMU has been installed...")
             pie_packages = []
             for package in packages:
                 if package.find(".pie") > -1:
@@ -616,14 +619,15 @@ class Plugin(CSMPlugin):
             match = re.search(name_of_fpd_smu, install_summary)
 
             if match:
-                self.ctx.info("The selected FPD SMU {} is found already active on device.".format(pie_packages[0]))
+                log_and_post_status(self.ctx, "The selected FPD SMU {} is ".format(pie_packages[0]) +
+                                    "found already active on device.")
             else:
                 self._run_install_action_plugin(InstallAddPlugin, "add")
                 self._run_install_action_plugin(InstallActivatePlugin, "activate")
                 self._run_install_action_plugin(InstallCommitPlugin, "commit")
 
         # check for the FPD version, if FPD needs upgrade,
-        self.ctx.info("Checking FPD versions...")
+        log_and_post_status(self.ctx, "Checking FPD versions...")
         subtype_to_locations_need_upgrade = self._check_fpd(iosxr_run_nodes)
 
         if subtype_to_locations_need_upgrade:
@@ -638,7 +642,7 @@ class Plugin(CSMPlugin):
 
     def _run_install_action_plugin(self, plugin_class, plugin_action):
         """Instantiate other install actions(install add, activate and commit) on same given packages"""
-        self.ctx.info("FPD upgrade - install {} the FPD SMU...".format(plugin_action))
+        log_and_post_status(self.ctx, "FPD upgrade - install {} the FPD SMU...".format(plugin_action))
         try:
             install_plugin = plugin_class(self.ctx)
             install_plugin.run()
@@ -670,7 +674,7 @@ class Plugin(CSMPlugin):
 
         for fpdtype in subtype_to_locations_need_upgrade:
 
-            self.ctx.info("FPD upgrade - start to upgrade FPD {} on all locations".format(fpdtype))
+            log_and_post_status(self.ctx, "FPD upgrade - start to upgrade FPD {} on all locations".format(fpdtype))
 
             CONFIRM_CONTINUE = re.compile("Continue\? \[confirm\]")
             CONFIRM_SECOND_TIME = re.compile("Continue \? \[no\]:")
@@ -817,7 +821,7 @@ class Plugin(CSMPlugin):
         :return: None if no error occurred.
         """
 
-        self.ctx.info("Saving the current configurations on device into server repository and csm_data")
+        log_and_post_status(self.ctx, "Saving the current configurations on device into server repository and csm_data")
 
         self._save_config_to_csm_data([os.path.join(fileloc, ADMIN_CONFIG_IN_CSM),
                                        os.path.join(self.ctx.log_directory,
@@ -829,7 +833,7 @@ class Plugin(CSMPlugin):
                                        self.ctx.normalize_filename("show running-config"))
                                        ], admin=False)
 
-        self.ctx.info("Converting admin configuration file with configuration migration tool")
+        log_and_post_status(self.ctx, "Converting admin configuration file with configuration migration tool")
         self._run_migration_on_config(fileloc, ADMIN_CONFIG_IN_CSM, nox_to_use, hostname)
 
         # ["admin.cal"]
@@ -838,7 +842,7 @@ class Plugin(CSMPlugin):
         config_names_on_device = [ADMIN_CAL_CONFIG_ON_DEVICE]
         if not config_filename:
 
-            self.ctx.info("Converting IOS-XR configuration file with configuration migration tool")
+            log_and_post_status(self.ctx, "Converting IOS-XR configuration file with configuration migration tool")
             self._run_migration_on_config(fileloc, XR_CONFIG_IN_CSM, nox_to_use, hostname)
 
             # "xr.iox"
@@ -851,7 +855,7 @@ class Plugin(CSMPlugin):
             config_files.append(CONVERTED_ADMIN_XR_CONFIG_IN_CSM)
             config_names_on_device.append(ADMIN_XR_CONFIG_ON_DEVICE)
 
-        self.ctx.info("Uploading the migrated configuration files to server repository and device.")
+        log_and_post_status(self.ctx, "Uploading the migrated configuration files to server repository and device.")
 
         config_names_in_repo = [hostname + "_" + config_name for config_name in config_files]
 
@@ -949,10 +953,10 @@ class Plugin(CSMPlugin):
         if not os.path.exists(fileloc):
             os.makedirs(fileloc)
 
-        self.ctx.info("Checking if some migration requirements are met.")
+        log_and_post_status(self.ctx, "Checking if some migration requirements are met.")
 
         if supported_hw.get(exr_version) and not override_hw_req:
-            self.ctx.info("Check if all RSP/RP/FAN/PEM on device are supported for migration.")
+            log_and_post_status(self.ctx, "Check if all RSP/RP/FAN/PEM on device are supported for migration.")
             self._check_if_rp_fan_pem_supported_and_in_valid_state(supported_hw[exr_version])
 
         try:
@@ -983,7 +987,7 @@ class Plugin(CSMPlugin):
 
         self._ping_repository_check(server_repo_url)
 
-        self.ctx.info("Resizing eUSB partition.")
+        log_and_post_status(self.ctx, "Resizing eUSB partition.")
         self._resize_eusb()
 
         # nox_to_use = self.ctx.migration_directory + self._find_nox_to_use()
@@ -997,7 +1001,7 @@ class Plugin(CSMPlugin):
         self._handle_configs(hostname_for_filename, server,
                              server_repo_url, fileloc, nox_to_use, config_filename)
 
-        self.ctx.info("Copying the ASR9K-X64 image from server repository to device.")
+        log_and_post_status(self.ctx, "Copying the ASR9K-X64 image from server repository to device.")
         self._copy_files_to_device(server, server_repo_url, [exr_image],
                                    [IMAGE_LOCATION + exr_image], timeout=TIMEOUT_FOR_COPY_IMAGE)
 
