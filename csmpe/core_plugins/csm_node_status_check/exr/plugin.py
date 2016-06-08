@@ -24,11 +24,8 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-
-
-import re
-
 from csmpe.plugins import CSMPlugin
+from plugin_lib import parse_show_platform
 
 
 class Plugin(CSMPlugin):
@@ -38,43 +35,10 @@ class Plugin(CSMPlugin):
     phases = {'Pre-Upgrade', 'Post-Upgrade'}
     os = {'eXR'}
 
-    def _parse_show_platform(self, output):
-        inventory = {}
-        lines = output.split('\n')
-        for line in lines:
-            line = line.strip()
-            if len(line) > 0 and line[0].isdigit():
-                states = re.split('\s\s+', line)
-                if not re.search('CPU\d+$', states[0]):
-                    continue
-
-                node, node_type, state, config_state = states
-
-                entry = {
-                    'type': node_type,
-                    'state': state,
-                    'config_state': config_state
-                }
-                inventory[node] = entry
-
-        return inventory
-
     def run(self):
-        """
-        Platform: NCS6K
-        RP/0/RP0/CPU0:Deploy#show platform
-        Node              Type                       State             Config state
-        --------------------------------------------------------------------------------
-        0/2/CPU0          NC6-10X100G-M-P            IOS XR RUN        NSHUT
-        0/RP0/CPU0        NC6-RP(Active)             IOS XR RUN        NSHUT
-        0/RP1/CPU0        NC6-RP(Standby)            IOS XR RUN        NSHUT
-
-        Platform: ASR9K-X64
-
-        """
         output = self.ctx.send("show platform")
 
-        inventory = self._parse_show_platform(output)
+        inventory = parse_show_platform(output)
         valid_state = [
             'IOS XR RUN',
             'PRESENT',

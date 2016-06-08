@@ -26,7 +26,8 @@
 # =============================================================================
 import re
 import time
-import itertools
+
+from csmpe.core_plugins.csm_node_status_check.exr.plugin_lib import parse_show_platform
 
 install_error_pattern = re.compile("Error:    (.*)$", re.MULTILINE)
 
@@ -112,41 +113,6 @@ def watch_operation(ctx, op_id=0):
 
         if no_install in output:
             break
-
-
-def parse_show_platform(output):
-    """
-    Platform: NCS6K
-    RP/0/RP0/CPU0:Deploy#show platform
-    Node              Type                       State             Config state
-    --------------------------------------------------------------------------------
-    0/2/CPU0          NC6-10X100G-M-P            IOS XR RUN        NSHUT
-    0/RP0/CPU0        NC6-RP(Active)             IOS XR RUN        NSHUT
-    0/RP1/CPU0        NC6-RP(Standby)            IOS XR RUN        NSHUT
-
-    Platform: ASR9K-X64
-
-    """
-    inventory = {}
-    lines = output.split('\n')
-    for line in lines:
-        line = line.strip()
-        if len(line) > 0 and line[0].isdigit():
-            states = re.split('\s\s+', line)
-
-            if not re.search('CPU\d+$', states[0]):
-                continue
-
-            node, node_type, state, config_state = states
-
-            entry = {
-                'type': node_type,
-                'state': state,
-                'config_state': config_state
-            }
-            inventory[node] = entry
-
-    return inventory
 
 
 def validate_node_state(inventory):

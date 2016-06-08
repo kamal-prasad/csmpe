@@ -28,6 +28,7 @@
 import re
 import time
 import itertools
+from csmpe.core_plugins.csm_node_status_check.ios_xr.plugin_lib import parse_show_platform
 
 install_error_pattern = re.compile("Error:    (.*)$", re.MULTILINE)
 
@@ -45,7 +46,6 @@ def watch_operation(ctx, op_id=0):
 
     """
     no_install = r"There are no install requests in operation"
-    #  failed_oper = r"Install operation (\d+) failed"
     op_progress = r"The operation is (\d+)% complete"
     op_download = r"(.*)KB downloaded: Download in progress"
     success = "Install operation {} completed successfully".format(op_id)
@@ -56,6 +56,7 @@ def watch_operation(ctx, op_id=0):
 
     propeller = itertools.cycle(["|", "/", "-", "\\", "|", "/", "-", "\\"])
 
+    output = None
     last_status = None
     finish = False
     while not finish:
@@ -88,64 +89,6 @@ def watch_operation(ctx, op_id=0):
             break
 
     return output
-
-
-def parse_show_platform(ctx, output):
-    """
-    ASR9K:
-    Node            Type                      State            Config State
-    -----------------------------------------------------------------------------
-    0/RSP0/CPU0     A9K-RSP440-SE(Active)     IOS XR RUN       PWR,NSHUT,MON
-    0/FT0/SP        ASR-9006-FAN              READY
-    0/1/CPU0        A9K-40GE-E                IOS XR RUN       PWR,NSHUT,MON
-    0/2/CPU0        A9K-MOD80-SE              UNPOWERED        NPWR,NSHUT,MON
-    0/3/CPU0        A9K-8T-L                  UNPOWERED        NPWR,NSHUT,MON
-    0/PS0/M0/SP     A9K-3KW-AC                READY            PWR,NSHUT,MON
-    0/PS0/M1/SP     A9K-3KW-AC                READY            PWR,NSHUT,MON
-
-    CRS:
-    Node          Type              PLIM               State           Config State
-    ------------- ----------------- ------------------ --------------- ---------------
-    0/0/CPU0      MSC-X             40-10GbE           IOS XR RUN      PWR,NSHUT,MON
-    0/1/SP        MSC-B(SP)         N/A                IOS XR RUN      PWR,NSHUT,MON
-    0/1/CPU0      MSC-B             Jacket Card        IOS XR RUN      PWR,NSHUT,MON
-    0/1/1         MSC-B(SPA)        1x10GE             OK              PWR,NSHUT,MON
-    0/1/2         MSC-B(SPA)        10X1GE             OK              PWR,NSHUT,MON
-    0/2/CPU0      FP-X              4-100GbE           IOS XR RUN      PWR,NSHUT,MON
-    0/3/CPU0      MSC-140G          N/A                UNPOWERED       NPWR,NSHUT,MON
-    0/4/CPU0      FP-X              N/A                UNPOWERED       NPWR,NSHUT,MON
-    0/7/CPU0      MSC-X             40-10GbE           IOS XR RUN      PWR,NSHUT,MON
-    0/8/CPU0      MSC-140G          N/A                UNPOWERED       NPWR,NSHUT,MON
-    0/14/CPU0     MSC-X             4-100GbE           IOS XR RUN      PWR,NSHUT,MON
-    0/RP0/CPU0    RP(Active)        N/A                IOS XR RUN      PWR,NSHUT,MON
-    0/RP1/CPU0    RP(Standby)       N/A                IOS XR RUN      PWR,NSHUT,MON
-
-    """
-    host = ctx.get_host
-    inventory = {}
-    lines = output.split('\n')
-    for line in lines:
-        line = line.strip()
-        if len(line) > 0 and line[0].isdigit():
-            states = re.split('\s\s+', line)
-
-            if not re.search('CPU\d+$', states[0]):
-                continue
-            if host.family == 'ASR9K':
-                node, node_type, state, config_state = states
-            elif host.family == 'CRS':
-                node, node_type, plim, state, config_state = states
-            else:
-                ctx.warning("Unsupported platform {}".format(host.family))
-                return None
-            entry = {
-                'type': node_type,
-                'state': state,
-                'config_state': config_state
-            }
-            inventory[node] = entry
-
-    return inventory
 
 
 def validate_node_state(inventory):
@@ -187,6 +130,9 @@ def wait_for_reload(ctx):
     ctx.info("Waiting for all nodes to come up")
     ctx.post_status("Waiting for all nodes to come up")
     time.sleep(100)
+
+    output = None
+
     while 1:
         # Wait till all nodes are in XR run state
         time_waited += poll_time
@@ -208,12 +154,7 @@ def wait_for_reload(ctx):
     return False
 
 
-def watch_install(ctx, oper_id, cmd):
-    # FIXME: Add description
-
-    """
-
-    """
+def watch_install(ctx, cmd, op_id=0):
     success_oper = r'Install operation (\d+) completed successfully'
     completed_with_failure = 'Install operation (\d+) completed with failure'
     failed_oper = r'Install operation (\d+) failed'
@@ -222,9 +163,9 @@ def watch_install(ctx, oper_id, cmd):
     install_method = r'Install [M|m]ethod: (.*)'
     op_success = "The install operation will continue asynchronously"
 
-    watch_operation(ctx, oper_id)
+    watch_operation(ctx, op_id)
 
-    output = ctx.send("admin show install log {} detail".format(oper_id))
+    output = ctx.send("admin show install log {} detail".format(op_id))
     if re.search(failed_oper, output):
         if re.search(failed_incr, output):
             ctx.info("Retrying with parallel reload option")
@@ -235,7 +176,7 @@ def watch_install(ctx, oper_id, cmd):
                 if result:
                     op_id = result.group(1)
                     watch_operation(ctx, op_id)
-                    output = ctx.send("admin show install log {} detail".format(oper_id))
+                    output = ctx.send("admin show install log {} detail".format(op_id))
                 else:
                     log_install_errors(ctx, output)
                     ctx.error("Operation ID not found")
@@ -312,7 +253,7 @@ def install_activate_deactivate(ctx, cmd):
         return
 
     if op_success in output:
-        success = watch_install(ctx, op_id, cmd)
+        success = watch_install(ctx, cmd, op_id)
         if not success:
             ctx.error("Reload or boot failure")
             return
