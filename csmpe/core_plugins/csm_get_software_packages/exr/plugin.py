@@ -39,11 +39,24 @@ class Plugin(CSMPlugin):
 
 
 def get_package(ctx):
-    # eXR does not require the 'admin' keyword. In fact, using 'admin' shows
-    # only the admin package, not others.
-    if hasattr(ctx, 'active_cli'):
-        ctx.active_cli = ctx.send("show install active")
-    if hasattr(ctx, 'inactive_cli'):
-        ctx.inactive_cli = ctx.send("show install inactive")
-    if hasattr(ctx, 'committed_cli'):
-        ctx.committed_cli = ctx.send("show install committed")
+    """
+    Convenient method, it may be called by outside of the plugin
+    """
+
+    # Get the admin packages
+    ctx.save_data("cli_admin_show_install_inactive", get_admin_package(ctx, "show install inactive"))
+    ctx.save_data("cli_admin_show_install_active", get_admin_package(ctx, "show install active"))
+    ctx.save_data("cli_admin_show_install_committed", get_admin_package(ctx, "show install committed"))
+
+    # Get the non-admin packages
+    ctx.save_data("cli_show_install_inactive", ctx.send("show install inactive"))
+    ctx.save_data("cli_show_install_active", ctx.send("show install active"))
+    ctx.save_data("cli_show_install_committed", ctx.send("show install committed"))
+
+
+def get_admin_package(ctx, cmd):
+    ctx.send("admin")
+    output = ctx.send(cmd)
+    ctx.send("exit")
+
+    return output

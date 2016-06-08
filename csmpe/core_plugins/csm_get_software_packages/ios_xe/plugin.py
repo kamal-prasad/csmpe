@@ -38,8 +38,8 @@ class Plugin(CSMPlugin):
 
 
 def get_package(ctx):
-    if hasattr(ctx, 'committed_cli'):
-        ctx.committed_cli = ctx.send('sh version')
-    if hasattr(ctx, 'inactive_cli'):
-        ctx.send('cd bootflash:')
-        ctx.inactive_cli = ctx.send('dir')
+    ctx.save_data("cli_show_install_committed", ctx.send("sh version"))
+
+    ctx.send('cd bootflash:')
+    ctx.save_data("cli_show_install_inactive", ctx.send("dir"))
+
