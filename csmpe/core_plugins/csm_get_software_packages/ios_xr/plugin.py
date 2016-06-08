@@ -39,9 +39,7 @@ class Plugin(CSMPlugin):
 
 
 def get_package(ctx):
-    if hasattr(ctx, 'active_cli'):
-        ctx.active_cli = ctx.send("admin show install active summary")
-    if hasattr(ctx, 'inactive_cli'):
-        ctx.inactive_cli = ctx.send("admin show install inactive summary")
-    if hasattr(ctx, 'committed_cli'):
-        ctx.committed_cli = ctx.send("admin show install committed summary")
+    ctx.save_data("cli_show_install_inactive", ctx.send("admin show install inactive"))
+    ctx.save_data("cli_show_install_active", ctx.send("admin show install active"))
+    ctx.save_data("cli_show_install_committed", ctx.send("admin show install committed"))
+

@@ -46,9 +46,6 @@ class InstallContext(object):
 
     def __init__(self):
         self.hostname = "Hostname"
-        self.committed_cli = None
-        self.active_cli = None
-        self.inactive_cli = None
 
     def post_status(self, message):
         print("[CSM Status] {}".format(message))
@@ -72,7 +69,7 @@ class Host(object):
 
 
 @delegate("_csm", ("post_status",), ("custom_commands", "success", "operation_id", "server_repository_url",
-                                     "software_packages", "active_cli", "inactive_cli", "committed_cli", "hostname",
+                                     "software_packages", "hostname",
                                      "log_directory", "pre_migrate_config_filename", "migration_directory",
                                      "post_migrate_config_handling_option", "get_server", "get_host",
                                      "pre_migrate_override_hw_req"))

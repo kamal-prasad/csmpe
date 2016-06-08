@@ -38,8 +38,7 @@ class Plugin(CSMPlugin):
 
 
 def get_package(ctx):
-    if hasattr(ctx, 'committed_cli'):
-        ctx.committed_cli = ctx.send('sh install packages | grep lib32_n9000')
-    if hasattr(ctx, 'inactive_cli'):
-        ctx.inactive_cli = ctx.send('sh install inactive')
+    ctx.save_data("cli_show_install_committed", ctx.send('sh install packages | grep lib32_n9000'))
+    ctx.save_data("cli_show_install_inactive", ctx.send('sh install inactive'))
+
 
