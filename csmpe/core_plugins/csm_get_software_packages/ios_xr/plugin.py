@@ -30,28 +30,18 @@ from csmpe.plugins import CSMPlugin
 class Plugin(CSMPlugin):
     """This plugin retrieves software information from the device."""
     name = "Get Software Packages Plugin"
-    platforms = {'ASR9K', 'CRS', 'NCS6K'}
+    platforms = {'ASR9K', 'CRS'}
     phases = {'Get-Software-Packages'}
+    os = {'XR'}
 
     def run(self):
         get_package(self.ctx)
 
 
 def get_package(ctx):
-    if ctx.os_type == "XR":
-        if hasattr(ctx, 'active_cli'):
-            ctx.active_cli = ctx.send("admin show install active summary")
-        if hasattr(ctx, 'inactive_cli'):
-            ctx.inactive_cli = ctx.send("admin show install inactive summary")
-        if hasattr(ctx, 'committed_cli'):
-            ctx.committed_cli = ctx.send("admin show install committed summary")
-
-    if ctx.os_type == "eXR":
-        # eXR does not require the 'admin' keyword. In fact, using 'admin' shows
-        # only the admin package, not others.
-        if hasattr(ctx, 'active_cli'):
-            ctx.active_cli = ctx.send("show install active")
-        if hasattr(ctx, 'inactive_cli'):
-            ctx.inactive_cli = ctx.send("show install inactive")
-        if hasattr(ctx, 'committed_cli'):
-            ctx.committed_cli = ctx.send("show install committed")
+    if hasattr(ctx, 'active_cli'):
+        ctx.active_cli = ctx.send("admin show install active summary")
+    if hasattr(ctx, 'inactive_cli'):
+        ctx.inactive_cli = ctx.send("admin show install inactive summary")
+    if hasattr(ctx, 'committed_cli'):
+        ctx.committed_cli = ctx.send("admin show install committed summary")
