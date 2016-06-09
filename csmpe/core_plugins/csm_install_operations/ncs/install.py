@@ -329,7 +329,7 @@ def install_activate_deactivate(ctx, cmd):
       install deactivate pkg ncs6k-5.2.5.CSCuz65240-1.0.0
     May 31 20:14:14 Package list:
     May 31 20:14:14     ncs6k-5.2.5.CSCuz65240-1.0.0
-    May 31 20:14:20 Install operation will continue in the background
+    May 31 20:14:20 Install operation will continue in the background (may or may not be displayed)
 
     <--- Time Lapses --->
 
@@ -368,12 +368,23 @@ def install_activate_deactivate(ctx, cmd):
 
     REBOOT_PROMPT = re.compile("This install operation will reboot the sdr, continue")
 
-    events = [CONTINUE_IN_BACKGROUND, REBOOT_PROMPT, ABORTED]
+    ROUTER_PROMPT = re.compile("#")
+
+    events = [CONTINUE_IN_BACKGROUND, REBOOT_PROMPT, ABORTED, ROUTER_PROMPT]
     transitions = [
-        (CONTINUE_IN_BACKGROUND, [0], -1, handle_non_reload_activate_deactivate, 20),
-        (REBOOT_PROMPT, [0], -1, handle_reload_activate_deactivate, 20),
-        (ABORTED, [0], -1, handle_aborted, 20),
+        (CONTINUE_IN_BACKGROUND, [0], -1, handle_non_reload_activate_deactivate, 40),
+        (REBOOT_PROMPT, [0], -1, handle_reload_activate_deactivate, 40),
+        (ROUTER_PROMPT, [0], -1, handle_non_reload_activate_deactivate, 40),
+        (ABORTED, [0], -1, handle_aborted, 40),
     ]
 
     if not ctx.run_fsm("activate or deactivate", cmd, events, transitions, timeout=60):
         ctx.error("Failed: {}".format(cmd))
+
+
+def send_admin_cmd(ctx, cmd):
+    ctx.send("admin")
+    output = ctx.send(cmd)
+    ctx.send("exit")
+
+    return output

@@ -27,6 +27,7 @@
 from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
 from install import install_add_remove
+from install import send_admin_cmd
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
 
@@ -44,7 +45,10 @@ class Plugin(CSMPlugin):
 
         pkgs = SoftwarePackage.from_package_list(packages)
 
+        admin_installed_inact = SoftwarePackage.from_show_cmd(send_admin_cmd(self.ctx, "show install inactive"))
         installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("show install inactive"))
+
+        installed_inact.update(admin_installed_inact)
         packages_to_remove = pkgs & installed_inact
 
         if not packages_to_remove:

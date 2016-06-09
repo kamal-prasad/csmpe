@@ -28,6 +28,7 @@
 from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
 from install import install_activate_deactivate
+from install import send_admin_cmd
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
 
@@ -52,8 +53,15 @@ class Plugin(CSMPlugin):
         #     ncs6k-5.2.5.47I.CSCuy47880-0.0.4.i
         #     ncs6k-mgbl-5.2.5.47I
         #     ncs6k-5.2.5.CSCuz65240-1.0.0
+
+        admin_installed_inact = SoftwarePackage.from_show_cmd(send_admin_cmd(self.ctx, "show install inactive"))
+        admin_installed_act = SoftwarePackage.from_show_cmd(send_admin_cmd(self.ctx, "show install active"))
+
         installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("show install inactive"))
         installed_act = SoftwarePackage.from_show_cmd(self.ctx.send("show install active"))
+
+        installed_inact.update(admin_installed_inact)
+        installed_act.update(admin_installed_act)
 
         # Packages to activate but not already active
         pkgs = pkgs - installed_act
