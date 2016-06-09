@@ -31,7 +31,7 @@ from csmpe.core_plugins.csm_node_status_check.exr.plugin_lib import parse_show_p
 
 install_error_pattern = re.compile("Error:    (.*)$", re.MULTILINE)
 
-csm_ctx = None
+plugin_ctx = None
 
 
 def log_install_errors(ctx, output):
@@ -261,9 +261,9 @@ def handle_aborted(fsm_ctx):
     :param ctx: FSM Context
     :return: True if successful other False
     """
-    global csm_ctx
+    global plugin_ctx
 
-    report_install_status(ctx=csm_ctx, op_id=get_op_id(fsm_ctx.ctrl.before))
+    report_install_status(ctx=plugin_ctx, op_id=get_op_id(fsm_ctx.ctrl.before))
 
     # Indicates the failure
     return False
@@ -274,14 +274,14 @@ def handle_non_reload_activate_deactivate(fsm_ctx):
     :param ctx: FSM Context
     :return: True if successful other False
     """
-    global csm_ctx
+    global plugin_ctx
 
     op_id = get_op_id(fsm_ctx.ctrl.before)
     if op_id == -1:
         return False
 
-    watch_operation(csm_ctx, op_id)
-    report_install_status(csm_ctx, op_id)
+    watch_operation(plugin_ctx, op_id)
+    report_install_status(plugin_ctx, op_id)
 
     return True
 
@@ -291,19 +291,19 @@ def handle_reload_activate_deactivate(fsm_ctx):
     :param ctx: FSM Context
     :return: True if successful other False
     """
-    global csm_ctx
+    global plugin_ctx
 
     op_id = get_op_id(fsm_ctx.ctrl.before)
     if op_id == -1:
         return False
 
-    watch_operation(csm_ctx, op_id)
-    success = wait_for_reload(csm_ctx)
+    watch_operation(plugin_ctx, op_id)
+    success = wait_for_reload(plugin_ctx)
     if not success:
-        csm_ctx.error("Reload or boot failure")
+        plugin_ctx.error("Reload or boot failure")
         return
 
-    csm_ctx.info("Operation {} finished successfully".format(op_id))
+    plugin_ctx.info("Operation {} finished successfully".format(op_id))
 
     return True
 
@@ -358,8 +358,8 @@ def install_activate_deactivate(ctx, cmd):
 
     Connection closed by foreign host.
     """
-    global csm_ctx
-    csm_ctx = ctx
+    global plugin_ctx
+    plugin_ctx = ctx
 
     ABORTED = re.compile("aborted")
 
@@ -368,17 +368,17 @@ def install_activate_deactivate(ctx, cmd):
 
     REBOOT_PROMPT = re.compile("This install operation will reboot the sdr, continue")
 
-    ROUTER_PROMPT = re.compile("#")
+    RUN_PROMPT = re.compile("#")
 
-    events = [CONTINUE_IN_BACKGROUND, REBOOT_PROMPT, ABORTED, ROUTER_PROMPT]
+    events = [CONTINUE_IN_BACKGROUND, REBOOT_PROMPT, ABORTED, RUN_PROMPT]
     transitions = [
-        (CONTINUE_IN_BACKGROUND, [0], -1, handle_non_reload_activate_deactivate, 40),
-        (REBOOT_PROMPT, [0], -1, handle_reload_activate_deactivate, 40),
-        (ROUTER_PROMPT, [0], -1, handle_non_reload_activate_deactivate, 40),
-        (ABORTED, [0], -1, handle_aborted, 40),
+        (CONTINUE_IN_BACKGROUND, [0], -1, handle_non_reload_activate_deactivate, 100),
+        (REBOOT_PROMPT, [0], -1, handle_reload_activate_deactivate, 100),
+        (RUN_PROMPT, [0], -1, handle_non_reload_activate_deactivate, 100),
+        (ABORTED, [0], -1, handle_aborted, 100),
     ]
 
-    if not ctx.run_fsm("activate or deactivate", cmd, events, transitions, timeout=60):
+    if not ctx.run_fsm("activate or deactivate", cmd, events, transitions, timeout=100):
         ctx.error("Failed: {}".format(cmd))
 
 
