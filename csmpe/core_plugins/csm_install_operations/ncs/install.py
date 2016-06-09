@@ -370,10 +370,18 @@ def install_activate_deactivate(ctx, cmd):
 
     events = [CONTINUE_IN_BACKGROUND, REBOOT_PROMPT, ABORTED]
     transitions = [
-        (CONTINUE_IN_BACKGROUND, [0], -1, handle_non_reload_activate_deactivate, 20),
-        (REBOOT_PROMPT, [0], -1, handle_reload_activate_deactivate, 20),
-        (ABORTED, [0], -1, handle_aborted, 20),
+        (CONTINUE_IN_BACKGROUND, [0], -1, handle_non_reload_activate_deactivate, 40),
+        (REBOOT_PROMPT, [0], -1, handle_reload_activate_deactivate, 40),
+        (ABORTED, [0], -1, handle_aborted, 40),
     ]
 
     if not ctx.run_fsm("activate or deactivate", cmd, events, transitions, timeout=60):
         ctx.error("Failed: {}".format(cmd))
+
+
+def send_admin_cmd(ctx, cmd):
+    ctx.send("admin")
+    output = ctx.send(cmd)
+    ctx.send("exit")
+
+    return output

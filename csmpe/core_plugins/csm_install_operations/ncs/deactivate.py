@@ -27,6 +27,7 @@
 from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
 from install import install_activate_deactivate
+from install import send_admin_cmd
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
 
@@ -43,8 +44,14 @@ class Plugin(CSMPlugin):
         packages = self.ctx.software_packages
         pkgs = SoftwarePackage.from_package_list(packages)
 
+        admin_installed_inact = SoftwarePackage.from_show_cmd(send_admin_cmd(self.ctx, "show install inactive"))
+        admin_installed_act = SoftwarePackage.from_show_cmd(send_admin_cmd(self.ctx, "show install active"))
+
         installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("show install inactive"))
         installed_act = SoftwarePackage.from_show_cmd(self.ctx.send("show install active"))
+
+        installed_inact.update(admin_installed_inact)
+        installed_act.update(admin_installed_act)
 
         # Packages in to deactivate but not inactive
         packages_to_deactivate = pkgs - installed_inact
