@@ -85,4 +85,3 @@ def parse_show_platform(ctx, output):
             inventory[node] = entry
 
     return inventory
-

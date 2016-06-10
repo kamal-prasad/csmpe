@@ -69,4 +69,3 @@ class Plugin(CSMPlugin):
 
         # Refresh package information
         get_package(self.ctx)
-

@@ -607,7 +607,7 @@ class Plugin(CSMPlugin):
 
         match = re.search("fpd", active_packages)
 
-        #if not match:
+        # if not match:
         #    self.ctx.error("No FPD package is active on device. Please install the FPD package on device first.")
 
         if version < RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU:
@@ -645,7 +645,7 @@ class Plugin(CSMPlugin):
 
             # Force upgrade all FPD's in RP and Line card that need upgrade, with the FPD pie or both the FPD
             # pie and FPD SMU depending on release version
-            #self._upgrade_all_fpds(subtype_to_locations_need_upgrade)
+            # self._upgrade_all_fpds(subtype_to_locations_need_upgrade)
 
         return True
 

@@ -42,4 +42,3 @@ def get_package(ctx):
 
     ctx.send('cd bootflash:')
     ctx.save_data("cli_show_install_inactive", ctx.send("dir"))
-

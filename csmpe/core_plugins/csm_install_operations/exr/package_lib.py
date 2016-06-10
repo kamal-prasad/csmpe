@@ -77,7 +77,7 @@ package_types = {"ncs6k": "sysadmin full mini mcast mgbl mpls k9sec doc li xr".s
                  }
 version_re = re.compile("(?P<VERSION>\d+\.\d+\.\d+(\.\d+\w+)?)")  # 5.2.4 or 5.2.4.47I
 smu_re = re.compile("(?P<SMU>CSC[a-z]{2}\d{5})")
-subversion_re = re.compile("CSC.*(?P<SUBVERSION>\d+\.\d+\.\d+?)") # 0.0.4
+subversion_re = re.compile("CSC.*(?P<SUBVERSION>\d+\.\d+\.\d+?)")  # 0.0.4
 
 
 class SoftwarePackage(object):

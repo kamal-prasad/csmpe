@@ -40,5 +40,3 @@ class Plugin(CSMPlugin):
 def get_package(ctx):
     ctx.save_data("cli_show_install_committed", ctx.send('sh install packages | grep lib32_n9000'))
     ctx.save_data("cli_show_install_inactive", ctx.send('sh install inactive'))
-
-
