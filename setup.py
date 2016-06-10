@@ -89,12 +89,6 @@ setup(
             '{} = csmpe.core_plugins.csm_filesystem_check.ios_xr.disk_space_check:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_filesystem_check.ios_xr.filesystem_rw_check:Plugin'.format(uuid4()),
 
-            '{} = csmpe.core_plugins.csm_install_operations.asr9k_x64.add:Plugin'.format(uuid4()),
-            '{} = csmpe.core_plugins.csm_install_operations.asr9k_x64.activate:Plugin'.format(uuid4()),
-            '{} = csmpe.core_plugins.csm_install_operations.asr9k_x64.commit:Plugin'.format(uuid4()),
-            '{} = csmpe.core_plugins.csm_install_operations.asr9k_x64.deactivate:Plugin'.format(uuid4()),
-            '{} = csmpe.core_plugins.csm_install_operations.asr9k_x64.remove:Plugin'.format(uuid4()),
-
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.add:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.activate:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.commit:Plugin'.format(uuid4()),
@@ -104,11 +98,11 @@ setup(
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.migrate:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_install_operations.ios_xr.post_migrate:Plugin'.format(uuid4()),
 
-            '{} = csmpe.core_plugins.csm_install_operations.ncs.add:Plugin'.format(uuid4()),
-            '{} = csmpe.core_plugins.csm_install_operations.ncs.activate:Plugin'.format(uuid4()),
-            '{} = csmpe.core_plugins.csm_install_operations.ncs.commit:Plugin'.format(uuid4()),
-            '{} = csmpe.core_plugins.csm_install_operations.ncs.deactivate:Plugin'.format(uuid4()),
-            '{} = csmpe.core_plugins.csm_install_operations.ncs.remove:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_install_operations.exr.add:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_install_operations.exr.activate:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_install_operations.exr.commit:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_install_operations.exr.deactivate:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_install_operations.exr.remove:Plugin'.format(uuid4()),
         ],
     },
     classifiers=[

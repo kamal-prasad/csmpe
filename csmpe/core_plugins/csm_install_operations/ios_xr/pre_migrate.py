@@ -42,6 +42,8 @@ from add import Plugin as InstallAddPlugin
 from activate import Plugin as InstallActivatePlugin
 from commit import Plugin as InstallCommitPlugin
 from migration_lib import SUPPORTED_HW_JSON, log_and_post_status
+from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
+
 
 MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.3"
 RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU = "6.1.1"
@@ -109,7 +111,10 @@ class Plugin(CSMPlugin):
         if file_name is None:
             self.ctx.warning("Unable to save '{}' output to file: {}".format(cmd, file_name))
 
-        inventory = self.ctx.load_data("inventory")
+        if isinstance(self.ctx.load_data("inventory"), list):
+            inventory = self.ctx.load_data("inventory")[0]
+        else:
+            inventory = self.ctx.load_data("inventory")
 
         rp_pattern = re.compile(ROUTEPROCESSOR_RE)
         fan_pattern = re.compile(FAN)
@@ -156,7 +161,11 @@ class Plugin(CSMPlugin):
 
     def _get_supported_iosxr_run_nodes(self, supported_hw):
         """Get names of all RSP's, RP's and Linecards in IOS-XR RUN state that are supported for migration."""
-        inventory = self.ctx.load_data("inventory")[0]
+
+        if isinstance(self.ctx.load_data("inventory"), list):
+            inventory = self.ctx.load_data("inventory")[0]
+        else:
+            inventory = self.ctx.load_data("inventory")
         print str(inventory)
         supported_iosxr_run_nodes = []
 
@@ -1006,5 +1015,8 @@ class Plugin(CSMPlugin):
                                    [IMAGE_LOCATION + exr_image], timeout=TIMEOUT_FOR_COPY_IMAGE)
 
         self._ensure_updated_fpd(packages, iosxr_run_nodes, version)
+
+        # Refresh package information
+        get_package(self.ctx)
 
         return True

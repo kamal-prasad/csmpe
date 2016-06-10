@@ -308,6 +308,11 @@ def handle_reload_activate_deactivate(fsm_ctx):
     return True
 
 
+def no_impact_warning(fsm_ctx):
+    plugin_ctx.warning("This was a NO IMPACT OPERATION. Packages are already active on device.")
+    return True
+
+
 def install_activate_deactivate(ctx, cmd):
     """
     Abort Situation:
@@ -336,7 +341,7 @@ def install_activate_deactivate(ctx, cmd):
     RP/0/RP0/CPU0:Deploy#May 31 20:15:10 Install operation 3 finished successfully
 
     ------------------------------------------------------------------------------------------------------------
-    Reload Situation:
+    Reload Situation 1:
 
     RP/0/RP0/CPU0:Deploy#install activate ncs6k-5.2.5.CSCux82987-1.0.0
     May 31 20:17:08 Install operation 4 started by root:
@@ -357,6 +362,29 @@ def install_activate_deactivate(ctx, cmd):
     <--- Router Starts Reloading --->
 
     Connection closed by foreign host.
+
+    Reload Situation 2:
+
+    RP/0/RSP0/CPU0:ios#install activate id 25
+    Jun 09 15:49:15 Install operation 27 started by root:
+    install activate id 25
+    Jun 09 15:49:15 Package list:
+    Jun 09 15:49:15     asr9k-sysadmin-system-6.1.1.17-r61116I.CSCcv44444.x86_64
+    Jun 09 15:49:15     asr9k-os-supp-64-3.1.0.1-r61116I.CSCxr90021.x86_64
+    Jun 09 15:49:15     asr9k-base-64-4.0.0.2-r61116I.CSCxr90014.x86_64
+    Jun 09 15:49:15     asr9k-sysadmin-topo-6.1.1.17-r61116I.CSCcv55555.x86_64
+
+    This install operation will reload the sdr, continue?
+    [yes/no]:[yes] <Hit Enter>
+    Jun 09 15:49:26 Install operation will continue in the background
+    RP/0/RSP0/CPU0:ios#
+
+    <--- Time Lapses --->
+
+    RP/0/RSP0/CPU0:ios#Jun 09 15:53:51 Install operation 27 finished successfully
+
+
+
     """
     global plugin_ctx
     plugin_ctx = ctx
@@ -366,14 +394,17 @@ def install_activate_deactivate(ctx, cmd):
     # Seeing this message without the reboot prompt indicates a non-reload situation
     CONTINUE_IN_BACKGROUND = re.compile("Install operation will continue in the background")
 
-    REBOOT_PROMPT = re.compile("This install operation will reboot the sdr, continue")
+    REBOOT_PROMPT = re.compile("This install operation will (?:reboot|reload) the sdr, continue")
 
     RUN_PROMPT = re.compile("#")
 
-    events = [CONTINUE_IN_BACKGROUND, REBOOT_PROMPT, ABORTED, RUN_PROMPT]
+    NO_IMPACT = re.compile("NO IMPACT OPERATION")
+
+    events = [CONTINUE_IN_BACKGROUND, REBOOT_PROMPT, ABORTED, NO_IMPACT, RUN_PROMPT]
     transitions = [
         (CONTINUE_IN_BACKGROUND, [0], -1, handle_non_reload_activate_deactivate, 100),
         (REBOOT_PROMPT, [0], -1, handle_reload_activate_deactivate, 100),
+        (NO_IMPACT, [0], -1, no_impact_warning, 20),
         (RUN_PROMPT, [0], -1, handle_non_reload_activate_deactivate, 100),
         (ABORTED, [0], -1, handle_aborted, 100),
     ]

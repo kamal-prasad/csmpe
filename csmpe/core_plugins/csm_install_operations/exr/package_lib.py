@@ -48,10 +48,33 @@ External Names                                Internal Names
 ncs6k-mcast.pkg-5.2.5.47I.DT_IMAGE            ncs6k-mcast-5.2.5.47I
 ncs6k-mini-x.iso-6.1.0.07I.DT_IMAGE           ncs6k-xr-5.2.5.47I
 ncs6k-5.2.5.47I.CSCuy47880-0.0.4.i.smu        ncs6k-5.2.5.47I.CSCuy47880-0.0.4.i
+
+ASR9K
+
+Production Packages - not finalized yet
+
+External Names                                Internal Names
+asr9k-mcast-x64-2.0.0.0-r61116I.x86_64.rpm    asr9k-mcast-x64-2.0.0.0-r61117I
+asr9k-bgp-x64-1.0.0.0-r61116I.x86_64.rpm      asr9k-bgp-x64-1.0.0.0-r61116I
+asr9k-mgbl-x64-3.0.0.0-r61116I.x86_64.rpm     asr9k-mgbl-x64-3.0.0.0-r61117I
+asr9k-full-x64.iso-6.1.1.16I                  asr9k-xr-6.1.1.17I
+asr9k-mini-x64.iso-6.1.1.16I                  asr9k-xr-6.1.1.17I
+
+Engineering Packages
+
+External Names                                                          Internal Names
+asr9k-mcast-x64-2.0.0.0-r61116I.x86_64.rpm-6.1.1.16I.DT_IMAGE           asr9k-mcast-x64-2.0.0.0-r61117I
+asr9k-bgp-x64-1.0.0.0-r61116I.x86_64.rpm-6.1.1.16I.DT_IMAGE             asr9k-bgp-x64-1.0.0.0-r61116I
+asr9k-mgbl-x64-3.0.0.0-r61116I.x86_64.rpm-6.1.1.16I.DT_IMAGE            asr9k-mgbl-x64-3.0.0.0-r61117I
+asr9k-full-x64.iso-6.1.1.16I.DT_IMAGE                                   asr9k-xr-6.1.1.17I
+asr9k-mini-x64.iso-6.1.1.16I.DT_IMAGE                                   asr9k-xr-6.1.1.17I
+
 """
 
-platforms = ["ncs6k"]
-package_types = "sysadmin full mini mcast mgbl mpls k9sec doc li xr".split()
+platforms = ["ncs6k", "asr9k"]
+package_types = {"ncs6k": "sysadmin full mini mcast mgbl mpls k9sec doc li xr".split(),
+                 "asr9k": "bgp eigrp full isis k9sec li m2m mcast mgbl mini mpls-te-rsvp mpls optic ospf parser".split()
+                 }
 version_re = re.compile("(?P<VERSION>\d+\.\d+\.\d+(\.\d+\w+)?)")  # 5.2.4 or 5.2.4.47I
 smu_re = re.compile("(?P<SMU>CSC[a-z]{2}\d{5})")
 subversion_re = re.compile("CSC.*(?P<SUBVERSION>\d+\.\d+\.\d+?)") # 0.0.4
@@ -71,7 +94,9 @@ class SoftwarePackage(object):
 
     @property
     def package_type(self):
-        for package_type in package_types:
+        if not self.platform or not package_types.get(self.platform):
+            return None
+        for package_type in package_types.get(self.platform):
             if "-" + package_type + "-" in self.package_name:
                 return package_type
         else:

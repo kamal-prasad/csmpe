@@ -24,45 +24,49 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
 from install import install_add_remove
-from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
+from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
-    """This plugin removes inactive packages from the device."""
-    name = "Install Remove Plugin"
-    platforms = {'ASR9K'}
-    phases = {'Remove'}
+    """This plugin adds packages from repository to the device."""
+    name = "Install Add Plugin"
+    platforms = {'NCS6K', 'ASR9K'}
+    phases = {'Add'}
     os = {'eXR'}
 
     def run(self):
+        server_repository_url = self.ctx.server_repository_url
+        if server_repository_url is None:
+            self.ctx.error("No repository provided")
+            return
+
         packages = self.ctx.software_packages
         if packages is None:
             self.ctx.error("No package list provided")
             return
 
-        pkgs = SoftwarePackage.from_package_list(packages)
+        has_tar = False
 
-        installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("show install inactive"))
-        packages_to_remove = pkgs & installed_inact
+        if self.ctx.family == 'NCS6K':
+            s_packages = " ".join([package for package in packages
+                                   if ('iso' in package or 'pkg' in package or 'smu' in package or 'tar' in package)])
+        else:
+            s_packages = " ".join([package for package in packages
+                                   if ('rpm' in package or 'iso' in package or 'tar' in package)])
 
-        if not packages_to_remove:
-            self.ctx.warning("Packages already removed. Nothing to be removed")
-            return
+        if 'tar' in s_packages:
+            has_tar = True
 
-        to_remove = " ".join(map(str, packages_to_remove))
+        cmd = "install add source {} {}".format(server_repository_url, s_packages)
 
-        cmd = 'install remove {}'.format(to_remove)
+        self.ctx.info("Add Package(s) Pending")
+        self.ctx.post_status("Add Package(s) Pending")
 
-        self.ctx.info("Remove Package(s) Pending")
-        self.ctx.post_status("Remove Package(s) Pending")
+        install_add_remove(self.ctx, cmd, has_tar=has_tar)
 
-        install_add_remove(self.ctx, cmd)
-
-        self.ctx.info("Package(s) Removed Successfully")
+        self.ctx.info("Package(s) Added Successfully")
 
         # Refresh package information
         get_package(self.ctx)
-

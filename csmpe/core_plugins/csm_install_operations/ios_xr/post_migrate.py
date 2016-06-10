@@ -33,7 +33,7 @@ from condoor.exceptions import CommandTimeoutError, CommandSyntaxError
 from csmpe.context import PluginError
 from migration_lib import wait_for_final_band, log_and_post_status
 from csmpe.core_plugins.csm_custom_commands_capture.plugin import Plugin as CmdCapturePlugin
-from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
+from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 from pre_migrate import XR_CONFIG_ON_DEVICE, ADMIN_CAL_CONFIG_ON_DEVICE, ADMIN_XR_CONFIG_ON_DEVICE
 
 TIMEOUT_FOR_COPY_CONFIG = 3600

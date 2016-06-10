@@ -36,6 +36,8 @@ from condoor.controllers.protocols.base import PASSWORD_PROMPT, USERNAME_PROMPT,
 from condoor.controllers.protocols.telnet import ESCAPE_CHAR, CONNECTION_REFUSED
 from condoor.exceptions import ConnectionError, ConnectionAuthenticationError
 from migration_lib import wait_for_final_band, log_and_post_status
+from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
+
 
 XR_PROMPT = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
 
@@ -208,5 +210,8 @@ class Plugin(CSMPlugin):
             cmd_capture_plugin.run()
         except PluginError as e:
             log_and_post_status(self.ctx, "Failed to capture 'show platform' - ({}): {}".format(e.errno, e.strerror))
+
+        # Refresh package information
+        get_package(self.ctx)
 
         return True

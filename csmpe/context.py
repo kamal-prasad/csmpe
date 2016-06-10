@@ -144,6 +144,9 @@ class PluginContext(object):
         self.info("Version: {}".format(self._connection.os_version))
         self.info("Connection type: {}".format("console" if self._connection.is_console else "vty"))
 
+        self._csm.save_data("device_info", self._connection.device_info)
+        self._csm.save_data("udi", self._connection.udi)
+
     def _format_log(self, message):
         return "[{}] {}".format(self.current_plugin, message) if self.current_plugin else "{}".format(message)
 
@@ -154,6 +157,7 @@ class PluginContext(object):
     def error(self, message):
         """Log ERROR message"""
         self._logger.error(self._format_log(message))
+        self._connection.disconnect()
         raise PluginError
         pass
 

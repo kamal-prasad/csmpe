@@ -24,60 +24,49 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-
-import re
-
+from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
-from install import watch_operation, log_install_errors
+from install import install_add_remove
+from install import send_admin_cmd
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
-    """This plugin commits packages on the device."""
-    name = "Install Commit Plugin"
-    platforms = {'NCS6K'}
-    phases = {'Commit'}
+    """This plugin removes inactive packages from the device."""
+    name = "Install Remove Plugin"
+    platforms = {'NCS6K', 'ASR9K'}
+    phases = {'Remove'}
+    os = {'eXR'}
 
     def run(self):
-        """
-        It performs commit operation
-        RP/0/RP0/CPU0:Deploy#install commit
-        May 27 16:34:04 Install operation 32 started by root:
-          install commit
-        May 27 16:34:05 Install operation will continue in the background
-
-        RP/0/RP0/CPU0:Deploy#May 27 16:34:11 Install operation 32 finished successfully
-        """
-        cmd = "install commit"
-        output = self.ctx.send(cmd)
-        result = re.search('Install operation (\d+)', output)
-        if result:
-            op_id = result.group(1)
-            watch_operation(self.ctx, op_id)
-        else:
-            log_install_errors(self.ctx, output)
-            self.ctx.error("Operation ID not found.")
+        packages = self.ctx.software_packages
+        if packages is None:
+            self.ctx.error("No package list provided")
             return
 
-        failed_oper = r'Install operation {} aborted'.format(op_id)
-        success_oper = r'Install operation (\d+) finished successfully'
+        pkgs = SoftwarePackage.from_package_list(packages)
 
-        # Not sure if this is still the message on NCS6K
-        completed_with_failure = 'Install operation (\d+) completed with failure'
+        admin_installed_inact = SoftwarePackage.from_show_cmd(send_admin_cmd(self.ctx, "show install inactive"))
+        installed_inact = SoftwarePackage.from_show_cmd(self.ctx.send("show install inactive"))
 
-        cmd = "show install log {} detail".format(op_id)
-        output = self.ctx.send(cmd)
+        installed_inact.update(admin_installed_inact)
+        packages_to_remove = pkgs & installed_inact
 
-        if re.search(failed_oper, output):
-            log_install_errors(self.ctx, output)
-            self.ctx.error("Install operation failed.")
+        if not packages_to_remove:
+            self.ctx.warning("Packages already removed. Nothing to be removed")
             return
 
-        if re.search(completed_with_failure, output):
-            log_install_errors(self.ctx, output)
-            self.ctx.info("Completed with failure but failure was after Point of No Return.")
-        elif re.search(success_oper, output):
-            self.ctx.info("Operation {} finished successfully.".format(op_id))
+        to_remove = " ".join(map(str, packages_to_remove))
+
+        cmd = 'install remove {}'.format(to_remove)
+
+        self.ctx.info("Remove Package(s) Pending")
+        self.ctx.post_status("Remove Package(s) Pending")
+
+        install_add_remove(self.ctx, cmd)
+
+        self.ctx.info("Package(s) Removed Successfully")
 
         # Refresh package information
         get_package(self.ctx)
+

@@ -24,7 +24,6 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-
 from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
 from install import install_activate_deactivate
@@ -33,26 +32,18 @@ from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
 
 class Plugin(CSMPlugin):
-    """This plugin Activates packages on the device."""
-    name = "Install Activate Plugin"
-    platforms = {'NCS6K'}
-    phases = {'Activate'}
+    """This plugin deactivates packages on the device."""
+    name = "Install Deactivate Plugin"
+    platforms = {'NCS6K', 'ASR9K'}
+    phases = {'Deactivate'}
+    os = {'eXR'}
 
-    def get_tobe_activated_pkg_list(self):
+    def get_tobe_deactivated_pkg_list(self):
         """
-        Produces a list of packaged to be activated
+        Produces a list of packaged to be deactivated
         """
         packages = self.ctx.software_packages
-
         pkgs = SoftwarePackage.from_package_list(packages)
-
-        # RP/0/RP0/CPU0:Deploy#show install inactive
-        # 5 inactive package(s) found:
-        #     ncs6k-k9sec-5.2.5.47I
-        #     ncs6k-mpls-5.2.5.47I
-        #     ncs6k-5.2.5.47I.CSCuy47880-0.0.4.i
-        #     ncs6k-mgbl-5.2.5.47I
-        #     ncs6k-5.2.5.CSCuz65240-1.0.0
 
         admin_installed_inact = SoftwarePackage.from_show_cmd(send_admin_cmd(self.ctx, "show install inactive"))
         admin_installed_act = SoftwarePackage.from_show_cmd(send_admin_cmd(self.ctx, "show install active"))
@@ -63,34 +54,33 @@ class Plugin(CSMPlugin):
         installed_inact.update(admin_installed_inact)
         installed_act.update(admin_installed_act)
 
-        # Packages to activate but not already active
-        pkgs = pkgs - installed_act
-        if pkgs:
-            packages_to_activate = set()
-            # After the packages are considered equal according to SoftwarePackage.__eq__(),
-            # Use the package name in the inactive area.  It is possible that the package
-            # name given for Activation may be an external filename like below.
-            # ncs6k-5.2.5.CSCuz65240.smu to ncs6k-5.2.5.CSCuz65240-1.0.0
-            for inactive_pkg in installed_inact:
-                for pkg in pkgs:
-                    if pkg == inactive_pkg:
-                        packages_to_activate.add(inactive_pkg)
+        # Packages in to deactivate but not inactive
+        packages_to_deactivate = pkgs - installed_inact
 
-            if not packages_to_activate:
+        if packages_to_deactivate:
+            # packages to be deactivated and installed active packages
+            packages_to_deactivate = packages_to_deactivate & installed_act
+            if not packages_to_deactivate:
                 to_deactivate = " ".join(map(str, pkgs))
 
-                state_of_packages = "\nTo activate :{} \nInactive: {} \nActive: {}".format(
+                state_of_packages = "\nTo deactivate :{} \nInactive: {} \nActive: {}".format(
                     to_deactivate, installed_inact, installed_act
                 )
                 self.ctx.info(state_of_packages)
-                self.ctx.error('To be activated packages not in inactive packages list.')
+                self.ctx.error('To be deactivated packages not in inactive packages list.')
                 return None
             else:
-                return " ".join(map(str, packages_to_activate))
+                return " ".join(map(str, packages_to_deactivate))
 
     def run(self):
         """
-        Performs install activate operation
+        Performs install deactivate operation
+        RP/0/RP0/CPU0:Deploy#install deactivate ncs6k-5.2.5.CSCuz65240-1.0.0
+        May 27 16:39:31 Install operation 33 started by root:
+          install deactivate pkg ncs6k-5.2.5.CSCuz65240-1.0.0
+        May 27 16:39:31 Package list:
+        May 27 16:39:31     ncs6k-5.2.5.CSCuz65240-1.0.0
+        May 27 16:39:36 Install operation will continue in the background
         """
         operation_id = None
         if hasattr(self.ctx, 'operation_id'):
@@ -99,22 +89,22 @@ class Plugin(CSMPlugin):
                 operation_id = self.ctx.operation_id
 
         if operation_id is None or operation_id == -1:
-            tobe_activated = self.get_tobe_activated_pkg_list()
-            if not tobe_activated:
-                self.ctx.info("Nothing to be activated.")
+            tobe_deactivated = self.get_tobe_deactivated_pkg_list()
+            if not tobe_deactivated:
+                self.ctx.info("Nothing to be deactivated.")
                 return True
 
         if operation_id is not None and operation_id != -1:
-            cmd = 'install activate id {}'.format(operation_id)
+            cmd = 'install deactivate id {}'.format(operation_id)
         else:
-            cmd = 'install activate {}'.format(tobe_activated)
+            cmd = 'install deactivate {}'.format(tobe_deactivated)
 
-        self.ctx.info("Activate package(s) pending")
-        self.ctx.post_status("Activate Package(s) Pending")
+        self.ctx.info("Deactivate package(s) pending")
+        self.ctx.post_status("Deactivate Package(s) Pending")
 
         install_activate_deactivate(self.ctx, cmd)
 
-        self.ctx.info("Activate package(s) done")
+        self.ctx.info("Deactivate package(s) done")
 
         # Refresh package information
         get_package(self.ctx)
