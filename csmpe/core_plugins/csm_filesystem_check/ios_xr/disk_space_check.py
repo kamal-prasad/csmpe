@@ -80,6 +80,11 @@ class Plugin(CSMPlugin):
         for package in packages:
             if package == "":
                 continue
+
+            if 'pie' not in package:
+                self.ctx.info("Package: {} cannot be checked, disk space check result will not be accurate.".format(package))
+                continue
+
             package_url = os.path.join(server_repository_url, package)
             size = self._get_pie_size(package_url)
             total_size += size
