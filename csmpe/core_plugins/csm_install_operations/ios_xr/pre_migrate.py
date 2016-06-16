@@ -29,19 +29,17 @@ import csv
 import os
 import re
 import subprocess
-import json
-
 import pexpect
 
 from csmpe.plugins import CSMPlugin
 from csmpe.context import PluginError
 from utils import ServerType, is_empty, concatenate_dirs
 from simple_server_helper import TFTPServer, FTPServer, SFTPServer
-from csmpe.core_plugins.csm_node_status_check.ios_xr.plugin import Plugin as NodeStatusPlugin
+from hardware_audit import Plugin as HardwareAuditPlugin
 from add import Plugin as InstallAddPlugin
 from activate import Plugin as InstallActivatePlugin
 from commit import Plugin as InstallCommitPlugin
-from migration_lib import SUPPORTED_HW_JSON, log_and_post_status
+from migration_lib import log_and_post_status
 from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
 
 
@@ -61,9 +59,11 @@ IMAGE_LOCATION = "harddiskb:/"
 ROUTEPROCESSOR_RE = '\d+/RS??P\d+/CPU\d+'
 LINECARD_RE = '\d+/\d+/CPU\d+'
 # SUPPORTED_CARDS = ['4X100', '8X100', '12X100']
-NODE = '(\d+/(?:RS?P)?\d+/CPU\d+)'
+# FPD_NODE is actually regex for RP/RSP/FC/LC
+FPD_NODE = '(\d+/(?:RS?P|FC)?\d+/(?:CPU\d+|SP))'
 FAN = '\d+/FT\d+/SP'
 PEM = '\d+/P[SM]\d+/M?\d+/SP'
+FC = '\d+/FC\d+/SP'
 
 FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw', 'fpga8', 'fclnxfw', 'fcfsbl'])
 
@@ -102,87 +102,16 @@ class Plugin(CSMPlugin):
     name = "Pre-Migrate Plugin"
     platforms = {'ASR9K'}
     phases = {'Pre-Migrate'}
+    os = {'XR'}
 
-    def _check_if_rp_fan_pem_supported_and_in_valid_state(self, supported_hw):
-        """Check if all RSP/RP/FAN/PEM currently on device are supported and are in valid state for migration."""
+    def _save_show_platform(self):
+        """Save the output of 'show platform' to session log"""
+
         cmd = "show platform"
         output = self.ctx.send(cmd)
         file_name = self.ctx.save_to_file(cmd, output)
         if file_name is None:
             self.ctx.warning("Unable to save '{}' output to file: {}".format(cmd, file_name))
-
-        if isinstance(self.ctx.load_data("inventory"), list):
-            inventory = self.ctx.load_data("inventory")[0]
-        else:
-            inventory = self.ctx.load_data("inventory")
-
-        rp_pattern = re.compile(ROUTEPROCESSOR_RE)
-        fan_pattern = re.compile(FAN)
-        pem_pattern = re.compile(PEM)
-
-        for key, value in inventory.items():
-
-            rp_or_rsp = self._check_if_supported_and_in_valid_state(key, rp_pattern, value, supported_hw.get("RP"))
-            if not rp_or_rsp:
-                fan = self._check_if_supported_and_in_valid_state(key, fan_pattern, value, supported_hw.get("FAN"))
-                if not fan:
-                    self._check_if_supported_and_in_valid_state(key, pem_pattern, value, supported_hw.get("PEM"))
-
-        return True
-
-    def _check_if_supported_and_in_valid_state(self, node_name, card_pattern, value, supported_type_list):
-        """
-        Check if a card (RSP/RP/FAN/PEM) is supported and in valid state.
-        :param node_name: the name under "Node" column in output of CLI "show platform". i.e., "0/RSP0/CPU0"
-        :param card_pattern: the regex for either the node name of a RSP, RP, FAN or PEM
-        :param value: the inventory value for nodes - through parsing output of "show platform"
-        :param supported_type_list: the list of card types/pids that are supported for migration
-        :return: True if this node is indeed the asked card(RP/RSP/FAN/PEM) and it's confirmed that it's supported
-                    for migration.
-                False if this node is not the asked card(RP/RSP/FAN/PEM).
-                error out if this node is indeed the asked card(RP/RSP/FAN/PEM) and it is NOT supported for migration.
-        """
-        if card_pattern.match(node_name):
-            supported = False
-            if value['state'] not in VALID_STATE:
-                    self.ctx.error("{}={}: {}".format(node_name, value, "Not in valid state for migration"))
-            if not supported_type_list:
-                self.ctx.error("The supported hardware list is missing information.")
-            for supported_type in supported_type_list:
-                if supported_type in value['type']:
-                    supported = True
-                    break
-            if not supported:
-                self.ctx.error("The card type for {} is not supported for migration to ASR9K-X64.".format(node_name) +
-                               " Please check the user manuel under 'Help' on CSM Server for list of " +
-                               "supported hardware.")
-            return True
-        return False
-
-    def _get_supported_iosxr_run_nodes(self, supported_hw):
-        """Get names of all RSP's, RP's and Linecards in IOS-XR RUN state that are supported for migration."""
-
-        if isinstance(self.ctx.load_data("inventory"), list):
-            inventory = self.ctx.load_data("inventory")[0]
-        else:
-            inventory = self.ctx.load_data("inventory")
-        print str(inventory)
-        supported_iosxr_run_nodes = []
-
-        node_pattern = re.compile(NODE)
-        if supported_hw.get("RP") and supported_hw.get("LC"):
-            supported_cards = supported_hw.get("RP") + supported_hw.get("LC")
-        else:
-            self.ctx.error("The supported hardware list is missing information on RP and/or LC.")
-
-        for key, value in inventory.items():
-            if node_pattern.match(key):
-                if value['state'] == 'IOS XR RUN':
-                    for card in supported_cards:
-                        if card in value['type']:
-                            supported_iosxr_run_nodes.append(key)
-                            break
-        return supported_iosxr_run_nodes
 
     def _ping_repository_check(self, repo_url):
         """Test ping server repository ip from device"""
@@ -552,26 +481,26 @@ class Plugin(CSMPlugin):
             self.ctx.error("/harddiskb:/ is smaller than 1 GB after running /pkg/bin/resize_eusb. " +
                            "Please make sure that the device has either RP2 or RSP4.")
 
-    def _check_fpd(self, iosxr_run_nodes):
+    def _check_fpd(self, nodes_to_check):
         """
         Check the versions of migration related FPD's on device. Return a dictionary
         that tells which FPD's on which node needs upgrade.
 
-        :param iosxr_run_nodes: a list of strings representing all nodes(RSP/RP/LC) on device
-                                that we actually will need to make sure that the FPD upgrade
-                                later on completes successfully.
+        :param nodes_to_check: a list of strings representing all nodes(RSP/RP/LC/FC) on device
+                               that we actually will need to make sure that the FPD upgrade
+                               later on completes successfully.
         :return: a dictionary with string FPD type as key, and a list of the string names of
-                 nodes(RSP/RP/LC) as value.
+                 nodes(RSP/RP/LC/FC) as value.
         """
         fpdtable = self.ctx.send("show hw-module fpd location all")
 
         subtype_to_locations_need_upgrade = {}
 
         for fpdtype in FPDS_CHECK_FOR_UPGRADE:
-            match_iter = re.finditer(NODE + "[-.A-Z0-9a-z\s]*?" + fpdtype + "[-.A-Z0-9a-z\s]*?(No|Yes)", fpdtable)
+            match_iter = re.finditer(FPD_NODE + "[-.A-Z0-9a-z\s]*?" + fpdtype + "[-.A-Z0-9a-z\s]*?(No|Yes)", fpdtable)
 
             for match in match_iter:
-                if match.group(1) in iosxr_run_nodes:
+                if match.group(1) in nodes_to_check:
                     if match.group(2) == "Yes":
                         if fpdtype not in subtype_to_locations_need_upgrade:
                             subtype_to_locations_need_upgrade[fpdtype] = []
@@ -579,7 +508,7 @@ class Plugin(CSMPlugin):
 
         return subtype_to_locations_need_upgrade
 
-    def _ensure_updated_fpd(self, packages, iosxr_run_nodes, version):
+    def _ensure_updated_fpd(self, packages, fpd_relevant_nodes, version):
         """
         Upgrade FPD's if needed.
         Steps:
@@ -596,8 +525,10 @@ class Plugin(CSMPlugin):
            defined by the dictionary complete successfully.
 
         :param packages: all user selected packages from scheduling the Pre-Migrate
-        :param iosxr_run_nodes: the list of string nodes names we get from running
-                                self._get_supported_iosxr_run_nodes(supported_hw)
+        :param fpd_relevant_nodes: the list of string nodes names for which we need
+                                    to check that fpd upgrade completed successfully.
+                                    we get this list from running
+                                    hardware audit plugin
         :param version: the current version of software. i.e., "5.3.3"
         :return: True if no error occurred.
         """
@@ -607,8 +538,8 @@ class Plugin(CSMPlugin):
 
         match = re.search("fpd", active_packages)
 
-        # if not match:
-        #    self.ctx.error("No FPD package is active on device. Please install the FPD package on device first.")
+        if not match:
+            self.ctx.error("No FPD package is active on device. Please install the FPD package on device first.")
 
         if version < RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU:
             log_and_post_status(self.ctx, "Checking if the FPD SMU has been installed...")
@@ -637,7 +568,7 @@ class Plugin(CSMPlugin):
 
         # check for the FPD version, if FPD needs upgrade,
         log_and_post_status(self.ctx, "Checking FPD versions...")
-        subtype_to_locations_need_upgrade = self._check_fpd(iosxr_run_nodes)
+        subtype_to_locations_need_upgrade = self._check_fpd(fpd_relevant_nodes)
 
         if subtype_to_locations_need_upgrade:
 
@@ -645,7 +576,7 @@ class Plugin(CSMPlugin):
 
             # Force upgrade all FPD's in RP and Line card that need upgrade, with the FPD pie or both the FPD
             # pie and FPD SMU depending on release version
-            # self._upgrade_all_fpds(subtype_to_locations_need_upgrade)
+            self._upgrade_all_fpds(subtype_to_locations_need_upgrade)
 
         return True
 
@@ -939,18 +870,12 @@ class Plugin(CSMPlugin):
         except AttributeError:
             self.ctx.error("No indication for whether to override hardware requirement or not.")
 
-        with open(SUPPORTED_HW_JSON) as supported_hw_file:
-            supported_hw = json.load(supported_hw_file)
-
         exr_image = self._get_exr_tar_package(packages)
         version_match = re.findall("\d+\.\d+\.\d+", exr_image)
         if version_match:
             exr_version = version_match[0]
         else:
             self.ctx.error("The selected tar file is missing release number in its filename.")
-
-        if supported_hw.get(exr_version) is None:
-            self.ctx.error("Missing hardware support information available for release {}.".format(exr_version))
 
         self._filter_server_repository(server)
 
@@ -962,26 +887,17 @@ class Plugin(CSMPlugin):
         if not os.path.exists(fileloc):
             os.makedirs(fileloc)
 
-        log_and_post_status(self.ctx, "Checking if some migration requirements are met.")
+        self.ctx.save_data('software_version', exr_version)
+        self.ctx.save_data('override_hw_req', override_hw_req)
+        hardware_audit_plugin = HardwareAuditPlugin(self.ctx)
+        hardware_audit_plugin.run()
 
-        if supported_hw.get(exr_version) and not override_hw_req:
-            log_and_post_status(self.ctx, "Check if all RSP/RP/FAN/PEM on device are supported for migration.")
-            self._check_if_rp_fan_pem_supported_and_in_valid_state(supported_hw[exr_version])
+        if self.ctx.load_data('fpd_relevant_nodes'):
+            fpd_relevant_nodes = self.ctx.load_data('fpd_relevant_nodes')[0]
+        else:
+            self.ctx.error("No data field fpd_relevant_nodes after completing hardware audit successfully.")
 
-        try:
-            node_status_plugin = NodeStatusPlugin(self.ctx)
-            node_status_plugin.run()
-        except PluginError:
-            self.ctx.error("Not all nodes are in valid states. Pre-Migrate aborted. " +
-                           "Please check session.log to trouble-shoot.")
-
-        iosxr_run_nodes = self._get_supported_iosxr_run_nodes(supported_hw[exr_version])
-
-        if len(iosxr_run_nodes) == 0:
-            self.ctx.error("No RSP/RP or Linecard on the device is supported for migration to ASR9K-X64.")
-
-        if self.ctx.os_type != "XR":
-            self.ctx.error('Device is not running ASR9K Classic XR. Migration action aborted.')
+        log_and_post_status(self.ctx, "Checking current software version.")
 
         match_version = re.search("(\d\.\d\.\d).*", self.ctx.os_version)
 
@@ -994,7 +910,10 @@ class Plugin(CSMPlugin):
             self.ctx.error("The minimal release version required for migration is 5.3.3. " +
                            "Please upgrade to at lease R5.3.3 before scheduling migration.")
 
+        log_and_post_status(self.ctx, "Testing ping to selected server repository IP.")
         self._ping_repository_check(server_repo_url)
+
+        self._save_show_platform()
 
         log_and_post_status(self.ctx, "Resizing eUSB partition.")
         self._resize_eusb()
@@ -1014,7 +933,7 @@ class Plugin(CSMPlugin):
         self._copy_files_to_device(server, server_repo_url, [exr_image],
                                    [IMAGE_LOCATION + exr_image], timeout=TIMEOUT_FOR_COPY_IMAGE)
 
-        self._ensure_updated_fpd(packages, iosxr_run_nodes, version)
+        self._ensure_updated_fpd(packages, fpd_relevant_nodes, version)
 
         # Refresh package information
         get_package(self.ctx)

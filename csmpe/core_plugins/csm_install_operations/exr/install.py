@@ -83,7 +83,9 @@ def watch_operation(ctx, op_id=0):
     RP/0/RP0/CPU0:Deploy#May 24 22:25:43 Install operation 17 finished successfully
     """
     no_install = r"No install operation in progress"
-    op_progress = r"The install operation {} is (\d+)% complete".format(op_id)
+    # In ASR9K eXR, the output to show install request may be "The install prepare operation 9 is 40% complete"
+    # or "The install service operation 9 is 40% complete" or "The install add operation 9 is 40% complete" and etc.
+    op_progress = r"The install \w*?\s?operation {} is (\d+)% complete".format(op_id)
     success = "Install operation {} finished successfully".format(op_id)
 
     cmd_show_install_request = "show install request"
@@ -144,6 +146,8 @@ def wait_for_reload(ctx):
      Wait for system to come up with max timeout as 25 Minutes
 
     """
+    ctx.info("Device is reloading.")
+    ctx.post_status("Device reloading...")
     ctx.disconnect()
     time.sleep(60)
     ctx.reconnect(max_timeout=1500)  # 25 * 60 = 1500

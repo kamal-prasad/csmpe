@@ -36,7 +36,7 @@ from context import PluginContext
 
 install_phases = ['Pre-Upgrade', 'Pre-Add', 'Add', 'Pre-Activate', 'Activate', 'Pre-Deactivate',
                   'Deactivate', 'Pre-Remove', 'Remove', 'Commit', 'Get-Software-Packages',
-                  'Pre-Migrate', 'Migrate', 'Post-Migrate']
+                  'Hardware-Audit', 'Pre-Migrate', 'Migrate', 'Post-Migrate']
 
 auto_pre_phases = ["Add", "Activate", "Deactivate"]
 
