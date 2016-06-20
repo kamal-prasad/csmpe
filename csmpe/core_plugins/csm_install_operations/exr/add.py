@@ -55,7 +55,7 @@ class Plugin(CSMPlugin):
         """
         if server.server_type == ServerType.TFTP_SERVER or server.server_type == ServerType.LOCAL_SERVER:
             cmd = "install add source {} {}".format(server_repository_url, s_packages)
-            output = self.ctx.send(cmd, timeout=7200)
+            output = self.ctx.send(cmd, timeout=100)
 
         elif server.server_type == ServerType.SFTP_SERVER or server.server_type == ServerType.FTP_SERVER:
             protocol = 'ftp' if server.server_type == ServerType.FTP_SERVER else 'sftp'
@@ -70,7 +70,7 @@ class Plugin(CSMPlugin):
 
             cmd = "install add source {} {}".format(url, s_packages)
             output1 = self.ctx.send(cmd, wait_for_string="[Pp]assword:", timeout=60)
-            output2 = self.ctx.send(server.password, timeout=200)
+            output2 = self.ctx.send(server.password, timeout=100)
             output = output1 + output2
 
         else:
