@@ -28,7 +28,6 @@ import re
 import time
 
 from csmpe.core_plugins.csm_node_status_check.exr.plugin_lib import parse_show_platform
-from csmpe.core_plugins.csm_install_operations.ios_xr.utils import ServerType
 
 install_error_pattern = re.compile("Error:    (.*)$", re.MULTILINE)
 
@@ -182,31 +181,6 @@ def wait_for_reload(ctx):
     ctx.error("Not all nodes have came up: {}".format(output))
     # this will never be executed
     return False
-
-
-def install_add(ctx, server, cmd, has_tar=False):
-    """
-    Success Condition:
-    ADD for tftp/local:
-    install add source tftp://223.255.254.254/auto/tftpboot-users/alextang/ ncs6k-mpls.pkg-6.1.0.07I.DT_IMAGE
-    May 24 18:54:12 Install operation will continue in the background
-    RP/0/RP0/CPU0:Deploy#May 24 18:54:30 Install operation 12 finished successfully
-
-    ADD for sftp/ftp
-    RP/0/RP0/CPU0:Deploy-2#install add source sftp://terastream:cisco@172.20.168.195/echami ncs6k-li.pkg-5.2.5-V2
-
-    Jun 20 18:58:08 Install operation 38 started by root:
-     install add source sftp://terastream:cisco@172.20.168.195/echami ncs6k-li.pkg-5.2.5-V2
-    password:Jun 20 18:58:24 Install operation will continue in the background
-    RP/0/RP0/CPU0:Deploy-2#
-    """
-    if server.server_type == ServerType.TFTP_SERVER or server.server_type == ServerType.LOCAL_SERVER:
-        output = ctx.send(cmd, timeout=7200)
-    else:
-        output1 = ctx.send(cmd, wait_for_string="[Pp]assword:", timeout=60)
-        output2 = ctx.send(server.password, timeout=200)
-        output = output1 + output2
-    observe_install_add_remove(ctx, output, has_tar=has_tar)
 
 
 def observe_install_add_remove(ctx, output, has_tar=False):

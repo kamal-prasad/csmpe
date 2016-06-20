@@ -25,7 +25,8 @@
 # =============================================================================
 
 from csmpe.plugins import CSMPlugin
-from install import install_add
+from install import observe_install_add_remove
+from csmpe.core_plugins.csm_install_operations.utils import ServerType, is_empty, concatenate_dirs
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
 
@@ -35,6 +36,47 @@ class Plugin(CSMPlugin):
     platforms = {'NCS6K', 'ASR9K'}
     phases = {'Add'}
     os = {'eXR'}
+
+    def install_add(self, server, server_repository_url, s_packages, has_tar=False):
+        """
+        Success Condition:
+        ADD for tftp/local:
+        install add source tftp://223.255.254.254/auto/tftpboot-users/alextang/ ncs6k-mpls.pkg-6.1.0.07I.DT_IMAGE
+        May 24 18:54:12 Install operation will continue in the background
+        RP/0/RP0/CPU0:Deploy#May 24 18:54:30 Install operation 12 finished successfully
+
+        ADD for sftp/ftp
+        RP/0/RP0/CPU0:Deploy-2#install add source sftp://terastream@172.20.168.195/echami ncs6k-li.pkg-5.2.5-V2
+
+        Jun 20 18:58:08 Install operation 38 started by root:
+         install add source sftp://terastream:cisco@172.20.168.195/echami ncs6k-li.pkg-5.2.5-V2
+        password:Jun 20 18:58:24 Install operation will continue in the background
+        RP/0/RP0/CPU0:Deploy-2#
+        """
+        if server.server_type == ServerType.TFTP_SERVER or server.server_type == ServerType.LOCAL_SERVER:
+            cmd = "install add source {} {}".format(server_repository_url, s_packages)
+            output = self.ctx.send(cmd, timeout=7200)
+
+        elif server.server_type == ServerType.SFTP_SERVER or server.server_type == ServerType.FTP_SERVER:
+            protocol = 'ftp' if server.server_type == ServerType.FTP_SERVER else 'sftp'
+            url = protocol + "://{}@{}".format(server.username, server.server_url)
+
+            if not is_empty(server.vrf):
+                url = url + ";{}".format(server.vrf)
+
+            remote_directory = concatenate_dirs(server.server_directory, self.ctx._csm.install_job.server_directory)
+            if not is_empty(remote_directory):
+                url = url + "/{}".format(remote_directory)
+
+            cmd = "install add source {} {}".format(url, s_packages)
+            output1 = self.ctx.send(cmd, wait_for_string="[Pp]assword:", timeout=60)
+            output2 = self.ctx.send(server.password, timeout=200)
+            output = output1 + output2
+
+        else:
+            self.ctx.error("Unsupported server repository type: {}".format(str(server.server_type)))
+
+        observe_install_add_remove(self.ctx, output, has_tar=has_tar)
 
     def run(self):
         server_repository_url = self.ctx.server_repository_url
@@ -64,12 +106,10 @@ class Plugin(CSMPlugin):
         if 'tar' in s_packages:
             has_tar = True
 
-        cmd = "install add source {} {}".format(server_repository_url, s_packages)
-
         self.ctx.info("Add Package(s) Pending")
         self.ctx.post_status("Add Package(s) Pending")
 
-        install_add(self.ctx, server, cmd, has_tar=has_tar)
+        self.install_add(server, server_repository_url, s_packages, has_tar=has_tar)
 
         self.ctx.info("Package(s) Added Successfully")
 

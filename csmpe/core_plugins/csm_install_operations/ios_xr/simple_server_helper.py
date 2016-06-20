@@ -26,9 +26,9 @@ import os
 import ftplib
 import shutil
 
-from csmpe.core_plugins.csm_install_operations.ios_xr.utils import ServerType
-from csmpe.core_plugins.csm_install_operations.ios_xr.utils import import_module
-from csmpe.core_plugins.csm_install_operations.ios_xr.utils import concatenate_dirs
+from csmpe.core_plugins.csm_install_operations.utils import ServerType
+from csmpe.core_plugins.csm_install_operations.utils import import_module
+from csmpe.core_plugins.csm_install_operations.utils import concatenate_dirs
 
 
 def get_server_impl(server):

@@ -29,11 +29,12 @@ import csv
 import os
 import re
 import subprocess
+
 import pexpect
 
 from csmpe.plugins import CSMPlugin
 from csmpe.context import PluginError
-from utils import ServerType, is_empty, concatenate_dirs
+from csmpe.core_plugins.csm_install_operations.utils import ServerType, is_empty, concatenate_dirs
 from simple_server_helper import TFTPServer, FTPServer, SFTPServer
 from hardware_audit import Plugin as HardwareAuditPlugin
 from add import Plugin as InstallAddPlugin
@@ -41,7 +42,6 @@ from activate import Plugin as InstallActivatePlugin
 from commit import Plugin as InstallCommitPlugin
 from migration_lib import log_and_post_status
 from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package
-
 
 MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.3"
 RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU = "6.1.1"
