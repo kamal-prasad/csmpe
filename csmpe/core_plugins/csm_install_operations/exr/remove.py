@@ -26,7 +26,7 @@
 
 from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
-from install import install_add_remove
+from install import observe_install_add_remove
 from install import send_admin_cmd
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
@@ -63,7 +63,8 @@ class Plugin(CSMPlugin):
         self.ctx.info("Remove Package(s) Pending")
         self.ctx.post_status("Remove Package(s) Pending")
 
-        install_add_remove(self.ctx, cmd)
+        output = self.ctx.send(cmd, timeout=7200)
+        observe_install_add_remove(self.ctx, output)
 
         self.ctx.info("Package(s) Removed Successfully")
 

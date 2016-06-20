@@ -25,7 +25,7 @@
 # =============================================================================
 
 from csmpe.plugins import CSMPlugin
-from install import install_add_remove
+from install import install_add
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
 
@@ -40,6 +40,11 @@ class Plugin(CSMPlugin):
         server_repository_url = self.ctx.server_repository_url
         if server_repository_url is None:
             self.ctx.error("No repository provided")
+            return
+
+        server = self.ctx.get_server
+        if server is None:
+            self.ctx.error("No server repository provided")
             return
 
         packages = self.ctx.software_packages
@@ -64,7 +69,7 @@ class Plugin(CSMPlugin):
         self.ctx.info("Add Package(s) Pending")
         self.ctx.post_status("Add Package(s) Pending")
 
-        install_add_remove(self.ctx, cmd, has_tar=has_tar)
+        install_add(self.ctx, server, cmd, has_tar=has_tar)
 
         self.ctx.info("Package(s) Added Successfully")
 
