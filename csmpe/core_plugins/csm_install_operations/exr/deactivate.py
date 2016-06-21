@@ -67,7 +67,7 @@ class Plugin(CSMPlugin):
                     to_deactivate, installed_inact, installed_act
                 )
                 self.ctx.info(state_of_packages)
-                self.ctx.error('To be deactivated packages not in inactive packages list.')
+                self.ctx.error('To be deactivated packages not in active packages list.')
                 return None
             else:
                 return " ".join(map(str, packages_to_deactivate))

@@ -63,7 +63,7 @@ class Plugin(CSMPlugin):
         self.ctx.info("Remove Package(s) Pending")
         self.ctx.post_status("Remove Package(s) Pending")
 
-        output = self.ctx.send(cmd, timeout=7200)
+        output = self.ctx.send(cmd, timeout=600)
         observe_install_add_remove(self.ctx, output)
 
         self.ctx.info("Package(s) Removed Successfully")

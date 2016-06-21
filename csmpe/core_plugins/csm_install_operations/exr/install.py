@@ -116,6 +116,8 @@ def watch_operation(ctx, op_id=0):
         if no_install in output:
             break
 
+    report_install_status(ctx, op_id)
+
 
 def validate_node_state(inventory):
     valid_state = [
@@ -146,8 +148,8 @@ def wait_for_reload(ctx):
      Wait for system to come up with max timeout as 25 Minutes
 
     """
-    ctx.info("Device is reloading.")
-    ctx.post_status("Device reloading...")
+    ctx.info("Device or sdr is reloading.")
+    ctx.post_status("Device or sdr is reloading...")
     ctx.disconnect()
     time.sleep(60)
     ctx.reconnect(max_timeout=1500)  # 25 * 60 = 1500
@@ -227,7 +229,6 @@ def observe_install_add_remove(ctx, output, has_tar=False):
 
     if op_success in output:
         watch_operation(ctx, op_id)
-        report_install_status(ctx, op_id)
     else:
         log_install_errors(ctx, output)
         ctx.error("Operation {} failed".format(op_id))
@@ -284,7 +285,6 @@ def handle_non_reload_activate_deactivate(fsm_ctx):
         return False
 
     watch_operation(plugin_ctx, op_id)
-    report_install_status(plugin_ctx, op_id)
 
     return True
 

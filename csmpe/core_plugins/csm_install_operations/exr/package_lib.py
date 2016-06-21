@@ -73,11 +73,16 @@ asr9k-mini-x64.iso-6.1.1.16I.DT_IMAGE                                   asr9k-xr
 
 platforms = ["ncs6k", "asr9k"]
 package_types = {"ncs6k": "sysadmin full mini mcast mgbl mpls k9sec doc li xr".split(),
-                 "asr9k": "bgp eigrp full isis k9sec li m2m mcast mgbl mini mpls-te-rsvp mpls optic ospf parser".split()
+                 "asr9k": "bgp eigrp full isis k9sec li m2m mcast mgbl mini xr mpls-te-rsvp mpls optic ospf parser".split()
                  }
-version_re = re.compile("(?P<VERSION>\d+\.\d+\.\d+(\.\d+\w+)?)")  # 5.2.4 or 5.2.4.47I
+version_regexs = {"ncs6k": re.compile("(?P<VERSION>\d+\.\d+\.\d+(\.\d+\w+)?)"),   # 5.2.4 or 5.2.4.47I
+                  # 61117I or 611 or 6.1.1.17I or 6.1.1
+                  "asr9k": re.compile("(?P<VERSION>(\d+\d+\d+(\d+\w+)?)|(\d+\.\d+\.\d+(\.\d+\w+)?)(?!\.\d)(?!-))")
+                  }
 smu_re = re.compile("(?P<SMU>CSC[a-z]{2}\d{5})")
-subversion_re = re.compile("CSC.*(?P<SUBVERSION>\d+\.\d+\.\d+?)")  # 0.0.4
+subversion_regexs = {"ncs6k": re.compile("CSC.*(?P<SUBVERSION>\d+\.\d+\.\d+?)"),  # 0.0.4
+                     "asr9k": re.compile("-(?P<SUBVERSION>\d+\.\d+\.\d+\.\d+)-")   # 2.0.0.0
+                     }
 
 
 class SoftwarePackage(object):
@@ -104,7 +109,10 @@ class SoftwarePackage(object):
 
     @property
     def version(self):
-        result = re.search(version_re, self.package_name)
+        if not self.platform or not version_regexs.get(self.platform):
+            return None
+        result = re.search(version_regexs.get(self.platform), self.package_name)
+
         return result.group("VERSION") if result else None
 
     @property
@@ -114,8 +122,10 @@ class SoftwarePackage(object):
 
     @property
     def subversion(self):
-        if self.smu:
-            result = re.search(subversion_re, self.package_name)
+        if not self.platform or not subversion_regexs.get(self.platform):
+            return None
+        if self.platform == "asr9k" or self.smu:
+            result = re.search(subversion_regexs.get(self.platform), self.package_name)
             return result.group("SUBVERSION") if result else None
         return None
 
@@ -123,8 +133,13 @@ class SoftwarePackage(object):
         return self.platform and self.version and (self.package_type or self.smu)
 
     def __eq__(self, other):
+        package_type_same = False
+        if (self.package_type == "xr" or self.package_type == "mini" or self.package_type == "full") and \
+           (other.package_type == "xr" or other.package_type == "mini" or other.package_type == "full"):
+            package_type_same = True
+
         result = self.platform == other.platform and \
-            self.package_type == other.package_type and \
+            (package_type_same or self.package_type == other.package_type) and \
             self.version == other.version and \
             self.smu == other.smu and \
             (self.subversion == other.subversion if self.subversion and other.subversion else True)
