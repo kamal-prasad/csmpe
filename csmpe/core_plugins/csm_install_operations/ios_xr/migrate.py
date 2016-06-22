@@ -37,6 +37,7 @@ from condoor.controllers.protocols.telnet import ESCAPE_CHAR, CONNECTION_REFUSED
 from condoor.exceptions import ConnectionError, ConnectionAuthenticationError
 from migration_lib import wait_for_final_band, log_and_post_status
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
+from csmpe.core_plugins.csm_install_operations.utils import update_device_info_udi
 
 
 XR_PROMPT = re.compile('(\w+/\w+/\w+/\w+:.*?)(\([^()]*\))?#')
@@ -212,5 +213,7 @@ class Plugin(CSMPlugin):
 
         # Refresh package information
         get_package(self.ctx)
+
+        update_device_info_udi(self.ctx)
 
         return True

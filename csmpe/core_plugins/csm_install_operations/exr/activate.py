@@ -30,6 +30,7 @@ from csmpe.plugins import CSMPlugin
 from install import install_activate_deactivate
 from install import send_admin_cmd
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
+from csmpe.core_plugins.csm_install_operations.utils import update_device_info_udi
 
 
 class Plugin(CSMPlugin):
@@ -119,3 +120,5 @@ class Plugin(CSMPlugin):
 
         # Refresh package information
         get_package(self.ctx)
+
+        update_device_info_udi(self.ctx)

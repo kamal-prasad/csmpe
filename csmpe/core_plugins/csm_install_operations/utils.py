@@ -44,3 +44,10 @@ def is_empty(obj):
         return False
 
     return True
+
+
+def update_device_info_udi(ctx):
+    ctx._connection._update_device_info()
+    ctx._connection._update_udi()
+    ctx._csm.save_data("device_info", ctx._connection.device_info)
+    ctx._csm.save_data("udi", ctx._connection.udi)
