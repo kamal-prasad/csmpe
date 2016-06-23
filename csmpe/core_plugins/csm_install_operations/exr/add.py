@@ -33,7 +33,7 @@ from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 class Plugin(CSMPlugin):
     """This plugin adds packages from repository to the device."""
     name = "Install Add Plugin"
-    platforms = {'NCS6K', 'ASR9K'}
+    platforms = {'NCS5K', 'NCS5500', 'NCS6K', 'ASR9K'}
     phases = {'Add'}
     os = {'eXR'}
 
