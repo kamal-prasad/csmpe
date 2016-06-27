@@ -2,7 +2,7 @@ import time
 import re
 import json
 
-SUPPORTED_HW_JSON = "./static/documents/migration_supported_hw.json"
+SUPPORTED_HW_JSON = "./asr9k_64bit/migration_supported_hw.json"
 
 ADMIN_RP = "\d+/RS?P\d+"
 ADMIN_LC = "\d+/\d+"

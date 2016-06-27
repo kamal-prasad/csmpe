@@ -887,7 +887,7 @@ class Plugin(CSMPlugin):
         if not os.path.exists(fileloc):
             os.makedirs(fileloc)
 
-        self.ctx.save_data('software_version', exr_version)
+        self.ctx.save_data('hardware_audit_software_version', exr_version)
         self.ctx.save_data('override_hw_req', override_hw_req)
         hardware_audit_plugin = HardwareAuditPlugin(self.ctx)
         hardware_audit_plugin.run()

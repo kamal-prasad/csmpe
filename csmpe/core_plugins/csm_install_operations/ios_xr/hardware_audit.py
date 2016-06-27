@@ -52,9 +52,9 @@ class Plugin(CSMPlugin):
 
     Console access is needed.
     """
-    name = "Hardware Audit Plugin"
+    name = "Migration Audit Plugin"
     platforms = {'ASR9K'}
-    phases = {'Hardware-Audit'}
+    phases = {'Migration-Audit'}
 
     def _check_if_hw_supported_and_in_valid_state(self, inventory, supported_hw, override):
         """
@@ -63,13 +63,13 @@ class Plugin(CSMPlugin):
         Minimal requirements (with override=True):
                             all RSP/RP's are supported and in IOS XR RUN state
                             all FC's are supported and in OK state
-                            all supported FAN/PEM's are in VALID_STATE
+                            all supported FAN/PEM's are in READY state
                             all supported LC's are in IOS XR RUN state
 
         default requirements (with override=False):
                             all RSP/RP's are supported and in IOS XR RUN state
                             all FC's are supported and in OK state
-                            all FAN/PEM's are supported and in VALID_STATE
+                            all FAN/PEM's are supported and in READY state
                             all supported LC's are in IOS XR RUN state
 
         :param inventory: the result for parsing the output of 'admin show platform'
@@ -91,49 +91,49 @@ class Plugin(CSMPlugin):
         for key, value in inventory.items():
 
             rp_or_rsp = self._check_if_supported_and_in_valid_state(key, rp_pattern, value,
-                                                                    supported_hw.get("RP"), ["IOS XR RUN"])
+                                                                    supported_hw.get("RP"), "IOS XR RUN")
             if rp_or_rsp == 1:
                 fpd_relevant_nodes.append(key)
             elif not rp_or_rsp:
 
                 fc = self._check_if_supported_and_in_valid_state(key, fc_pattern, value,
-                                                                 supported_hw.get("FC"), ["OK"])
+                                                                 supported_hw.get("FC"), "OK")
                 if fc == 1:
                     fpd_relevant_nodes.append(key)
                 elif not fc:
 
                     lc = self._check_if_supported_and_in_valid_state(key, lc_pattern, value, supported_hw.get("LC"),
-                                                                     ["IOS XR RUN"], mandatory=False)
+                                                                     "IOS XR RUN", mandatory=False)
                     if lc == 1:
                         fpd_relevant_nodes.append(key)
                     elif not lc:
                         fan = self._check_if_supported_and_in_valid_state(key, fan_pattern, value,
                                                                           supported_hw.get("FAN"),
-                                                                          VALID_STATE, mandatory=not override)
+                                                                          "READY", mandatory=not override)
                         if not fan:
                             self._check_if_supported_and_in_valid_state(key, pem_pattern, value,
                                                                         supported_hw.get("PEM"),
-                                                                        VALID_STATE, mandatory=not override)
+                                                                        "READY", mandatory=not override)
         return fpd_relevant_nodes
 
     def _check_if_supported_and_in_valid_state(self, node_name, card_pattern, value,
-                                               supported_type_list, acceptable_states, mandatory=True):
+                                               supported_type_list, operational_state, mandatory=True):
         """
         Check if a card (RSP/RP/FAN/PEM/FC) is supported and in valid state.
         :param node_name: the name under "Node" column in output of CLI "show platform". i.e., "0/RSP0/CPU0"
         :param card_pattern: the regex for either the node name of a RSP, RP, FAN, PEM or FC
         :param value: the inventory value for nodes - through parsing output of "show platform"
         :param supported_type_list: the list of card types/pids that are supported for migration
-        :param acceptable_states: the list of states that this node can be in in order to qualify for migration
+        :param operational_state: the state that this node can be in in order to qualify for migration
         :param mandatory: if mandatory is True, if this node matches the card_pattern, it must be supported card
                           type in order to qualify for migration. If it's False, it's not necessary that the card
-                          type is supported, but if it is supported, its state must be in the acceptable state
+                          type is supported, but if it is supported, its state must be in the operational state
         :return: 1 if this node is indeed the asked card(RP/RSP/FAN/PEM/FC/LC) and it's confirmed that it's supported
-                    and in acceptable state for migration.
+                    and in the operational state for migration.
 
                  -1 if this node is indeed the asked card(RP/RSP/FAN/PEM/FC/LC), it's not mandatory that this node has
                     supported card type, and it's confirmed that it does not have supported card type, but it is in
-                    acceptable state for migration.
+                    the operational state for migration.
 
                  0 if this node is not the asked card(RP/RSP/FAN/PEM/FC/LC).
 
@@ -141,7 +141,7 @@ class Plugin(CSMPlugin):
                     below:
                     1. It is mandatory for this node to have supported card type, but the card type of this node is NOT
                         supported for migration.
-                    2. This node is supported for migration, but it is not in an acceptable state for migration.
+                    2. This node is supported for migration, but it is not in the operational state for migration.
         """
         if card_pattern.match(node_name):
             supported = False
@@ -156,9 +156,9 @@ class Plugin(CSMPlugin):
                                " Please check the user manual under 'Help' on CSM Server for list of " +
                                "supported hardware for ASR9K-X64.")
 
-            if supported and value['state'] not in acceptable_states:
-                self.ctx.error("{}={}: Not in valid state for migration. ".format(node_name, value) +
-                               "Valid states: {}", str(acceptable_states))
+            if supported and value['state'] != operational_state:
+                self.ctx.error("{}={}: Not in valid operational state for migration. ".format(node_name, value) +
+                               "Operational state: {}", operational_state)
             if supported:
                 return 1
             else:
@@ -168,24 +168,20 @@ class Plugin(CSMPlugin):
     def run(self):
 
         try:
-            software_version = self.ctx.software_version
-            self.ctx.info("Hardware audit for image release " + str(software_version))
+            software_version = self.ctx.hardware_audit_software_version
+            print "software_version = " + str(software_version)
+            self.ctx.info("Hardware audit for software release version " + str(software_version))
         except AttributeError:
             if self.ctx.load_data('software_version'):
                 software_version = self.ctx.load_data('software_version')[0]
-                self.ctx.info("Hardware audit for image release " + str(software_version))
+                self.ctx.info("Hardware audit for software release version " + str(software_version))
             else:
                 self.ctx.error("No software version selected.")
 
         try:
-            override_hw_req = self.ctx.override_hw_req
+            override_hw_req = self.ctx.pre_migrate_override_hw_req
         except AttributeError:
-            if self.ctx.load_data('override_hw_req'):
-                override_hw_req = self.ctx.load_data('override_hw_req')[0]
-                if override_hw_req:
-                    self.ctx.info("User chooses to override hardware requirement on FAN and PEM.")
-            else:
-                override_hw_req = False
+            override_hw_req = False
 
         if override_hw_req:
             log_and_post_status(self.ctx,
