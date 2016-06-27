@@ -41,6 +41,17 @@ class Plugin(CSMPlugin):
     os = {'XR'}
 
     def _get_pie_size(self, package_url):
+        """
+        # admin show install pie-info ftp://terastream:*****@172.20.168.195//home/terastream/4.3.1FCS/asr9k-doc-px.pie-4.3.1
+        Contents of pie file '/ftp://terastream:*****@172.20.168.195//home/terastream/4.3.1FCS/asr9k-doc-px.pie-4.3.1':
+            Expiry date       : < NOT AVAILABLE
+            Uncompressed size : 25792000
+            Compressed size   : 5602232
+            Size on disk      : 5668352
+
+            asr9k-doc-px-4.3.1
+                asr9K-doc-supp-4.3.1
+        """
         cmd = "admin show install pie-info " + package_url
         output = self.ctx.send(cmd)
         if output:
@@ -64,8 +75,8 @@ class Plugin(CSMPlugin):
             self.ctx.warning("No repository path provided.")
             return
 
-        if server_repository_url[:4] == 'sftp':
-            self.ctx.info('Skipping as disk space check not supported for SFTP.')
+        if server_repository_url[:4] != 'tftp' and server_repository_url[:3] != 'ftp':
+            self.ctx.info('Skipping as disk space check only works for TFTP/FTP.')
             return
 
         file_systems = get_filesystems(self.ctx)

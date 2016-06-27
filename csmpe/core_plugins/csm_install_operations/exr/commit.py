@@ -35,7 +35,7 @@ from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 class Plugin(CSMPlugin):
     """This plugin commits packages on the device."""
     name = "Install Commit Plugin"
-    platforms = {'NCS6K', 'ASR9K'}
+    platforms = {'NCS5K', 'NCS5500', 'NCS6K', 'ASR9K'}
     phases = {'Commit'}
     os = {'eXR'}
 
