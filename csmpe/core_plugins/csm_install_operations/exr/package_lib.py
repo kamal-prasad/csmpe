@@ -73,7 +73,7 @@ asr9k-mini-x64.iso-6.1.1.16I.DT_IMAGE                                   asr9k-xr
 
 platforms = ["ncs6k", "asr9k"]
 package_types = {"ncs6k": "sysadmin full mini mcast mgbl mpls k9sec doc li xr".split(),
-                 "asr9k": "bgp eigrp full isis k9sec li m2m mcast mgbl mini xr mpls-te-rsvp mpls optic ospf parser".split()
+                 "asr9k": "bgp diags eigrp full isis k9sec li m2m mcast mgbl mini xr mpls-te-rsvp mpls optic ospf parser".split()
                  }
 version_regexs = {"ncs6k": re.compile("(?P<VERSION>\d+\.\d+\.\d+(\.\d+\w+)?)"),   # 5.2.4 or 5.2.4.47I
                   # 61117I or 611 or 6.1.1.17I or 6.1.1
