@@ -24,8 +24,6 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
-import re
-
 """
 NCS6K
 
@@ -36,11 +34,11 @@ ncs6k-doc.pkg-5.2.4                           ncs6k-doc-5.2.4
 ncs6k-li.pkg-5.2.4                            ncs6k-li-5.2.4
 ncs6k-mcast.pkg-5.2.4                         ncs6k-mcast-5.2.4
 ncs6k-mgbl.pkg-5.2.4                          ncs6k-mgbl-5.2.4
-ncs6k-mini-x.iso-5.2.4                        ncs6k-xr-5.2.5
+ncs6k-mini-x.iso-5.2.4                        ncs6k-xr-5.2.4
 ncs6k-mpls.pkg-5.2.4                          ncs6k-mpls-5.2.4
 ncs6k-sysadmin.iso-5.2.4                      ncs6k-sysadmin-5.2.4
-ncs6k-full-x.iso-5.2.4
-ncs6k-5.2.5.CSCuy47880.smu                    ncs6k-5.2.5.CSCuy47880-1.0.0
+ncs6k-full-x.iso-5.2.4                        ncs6k-xr-5.2.4
+ncs6k-5.2.5.CSCuy47880.smu                    ncs6k-5.2.5.CSCuy47880-1.0.0  <- subversion added
 
 Engineering Packages
 
@@ -49,39 +47,110 @@ ncs6k-mcast.pkg-5.2.5.47I.DT_IMAGE            ncs6k-mcast-5.2.5.47I
 ncs6k-mini-x.iso-6.1.0.07I.DT_IMAGE           ncs6k-xr-5.2.5.47I
 ncs6k-5.2.5.47I.CSCuy47880-0.0.4.i.smu        ncs6k-5.2.5.47I.CSCuy47880-0.0.4.i
 
-ASR9K
+ASR9K-64
 
 Production Packages - not finalized yet
 
 External Names                                Internal Names
-asr9k-mcast-x64-2.0.0.0-r61116I.x86_64.rpm    asr9k-mcast-x64-2.0.0.0-r61117I
-asr9k-bgp-x64-1.0.0.0-r61116I.x86_64.rpm      asr9k-bgp-x64-1.0.0.0-r61116I
-asr9k-mgbl-x64-3.0.0.0-r61116I.x86_64.rpm     asr9k-mgbl-x64-3.0.0.0-r61117I
-asr9k-full-x64.iso-6.1.1.16I                  asr9k-xr-6.1.1.17I
-asr9k-mini-x64.iso-6.1.1.16I                  asr9k-xr-6.1.1.17I
+asr9k-mcast-x64-2.0.0.0-r611.x86_64.rpm       asr9k-mcast-x64-2.0.0.0-r611
+asr9k-bgp-x64-1.0.0.0-r611.x86_64.rpm         asr9k-bgp-x64-1.0.0.0-r611
+asr9k-mgbl-x64-3.0.0.0-r611.x86_64.rpm        asr9k-mgbl-x64-3.0.0.0-r611
+asr9k-full-x64.iso-6.1.1                      asr9k-xr-6.1.1
+asr9k-mini-x64.iso-6.1.1                      asr9k-xr-6.1.1
 
 Engineering Packages
 
 External Names                                                          Internal Names
-asr9k-mcast-x64-2.0.0.0-r61116I.x86_64.rpm-6.1.1.16I.DT_IMAGE           asr9k-mcast-x64-2.0.0.0-r61117I
+asr9k-mcast-x64-2.0.0.0-r61116I.x86_64.rpm-6.1.1.16I.DT_IMAGE           asr9k-mcast-x64-2.0.0.0-r61116I
 asr9k-bgp-x64-1.0.0.0-r61116I.x86_64.rpm-6.1.1.16I.DT_IMAGE             asr9k-bgp-x64-1.0.0.0-r61116I
-asr9k-mgbl-x64-3.0.0.0-r61116I.x86_64.rpm-6.1.1.16I.DT_IMAGE            asr9k-mgbl-x64-3.0.0.0-r61117I
-asr9k-full-x64.iso-6.1.1.16I.DT_IMAGE                                   asr9k-xr-6.1.1.17I
-asr9k-mini-x64.iso-6.1.1.16I.DT_IMAGE                                   asr9k-xr-6.1.1.17I
+asr9k-mgbl-x64-3.0.0.0-r61116I.x86_64.rpm-6.1.1.16I.DT_IMAGE            asr9k-mgbl-x64-3.0.0.0-r61116I
+asr9k-full-x64.iso-6.1.1.16I.DT_IMAGE                                   asr9k-xr-6.1.1.16I
+asr9k-mini-x64.iso-6.1.1.16I.DT_IMAGE                                   asr9k-xr-6.1.1.16I
 
+NCS5K
+
+Production Packages
+
+External Names                                Internal Names
+ncs5k-sysadmin.iso-6.0.1                      ncs5k-sysadmin-6.0.1
+ncs5k-full-x.iso-6.0.1                        ncs5k-xr-6.0.1
+ncs5k-mini-x.iso-6.0.1                        ncs5k-xr-6.0.1
+ncs5k-mcast-2.0.0.0-r601.x86_64.rpm-6.0.1     ncs5k-mcast-2.0.0.0-r601
+ncs5k-mgbl-2.0.0.0-r601.x86_64.rpm-6.0.1      ncs5k-mgbl-2.0.0.0-r601
+ncs5k-mpls-2.0.0.0-r601.x86_64.rpm-6.0.1      ncs5k-mpls-2.0.0.0-r601
+ncs5k-k9sec-2.0.0.0-r601.x86_64.rpm-6.0.1     ncs5k-k9sec-2.0.0.0-r601
+ncs5k-isis-2.0.0.0-r601.x86_64.rpm-6.0.1      ncs5k-isis-2.0.0.0-r601
+ncs5k-ospf-2.0.0.0-r601.x86_64.rpm-6.0.1      ncs5k-ospf-2.0.0.0-r601
+
+Engineering Packages
+
+External Names                                                Internal Names
+ncs5k-mgbl-x64-3.0.0.0-r61116I.x86_64.rpm-6.0.1.16I.DT_IMAGE  ncs5k-mgbl-3.0.0.0-r60116I
+ncs5k-sysadmin.iso-6.0.1                                      ncs5k-sysadmin-6.0.1.26I
+ncs5k-full-x.iso-6.0.1.16I.DT_IMAGE                           ncs5k-xr-6.0.1.16I
+
+NCS5500
+
+Production Packages
+
+External Names                                                Internal Names
+ncs5500-eigrp-2.0.0.0-r601.x86_64.rpm-6.0.1                   ncs5500-eigrp-2.0.0.0-r601
+ncs5500-isis-2.0.0.0-r601.x86_64.rpm-6.0.1                    ncs5500-isis-2.0.0.0-r601
+ncs5500-k9sec-2.0.0.0-r601.x86_64.rpm-6.0.1                   ncs5500-k9sec-2.0.0.0-r601
+ncs5500-m2m-2.0.0.0-r601.x86_64.rpm-6.0.1                     ncs5500-m2m-2.0.0.0-r601
+ncs5500-mgbl-3.0.0.0-r601.x86_64.rpm-6.0.1                    ncs5500-mgbl-3.0.0.0-r601
+ncs5500-mini-x.iso-6.0.1                                      ncs5500-xr-6.0.1
+ncs5500-mpls-te-rsvp-2.0.0.0-r601.x86_64.rpm-6.0.1            ncs5500-mpls-te-rsvp-2.0.0.0-r601
+ncs5500-mpls-2.0.0.0-r601.x86_64.rpm-6.0.1                    ncs5500-mpls-2.0.0.0-r601
+ncs5500-ospf-1.0.0.0-r601.x86_64.rpm-6.0.1                    ncs5500-ospf-1.0.0.0-r601
+ncs5500-parser-1.0.0.0-r601.x86_64.rpm-6.0.1                  ncs5500-parser-1.0.0.0-r601
 """
+import re
 
-platforms = ["ncs6k", "asr9k"]
-package_types = {"ncs6k": "sysadmin full mini mcast mgbl mpls k9sec doc li xr".split(),
-                 "asr9k": "bgp diags eigrp full isis k9sec li m2m mcast mgbl mini xr mpls-te-rsvp mpls optic ospf parser".split()
-                 }
-version_regexs = {"ncs6k": re.compile("(?P<VERSION>\d+\.\d+\.\d+(\.\d+\w+)?)"),   # 5.2.4 or 5.2.4.47I
+platforms = ["ncs5k", "ncs5500", "ncs6k", "asr9k"]
+# This list will cover all eXR platforms.  They are arranged in alphabetical order for human consumption.
+package_types = [
+    "bgp",
+    "diags",
+    "doc",
+    "eigrp",
+    "full",
+    "infra",
+    "isis",
+    "k9sec",
+    "li",
+    "m2m",
+    "mcast",
+    "mgbl",
+    "mini",
+    "mpls",
+    "mpls-te-rsvp",
+    "optic",
+    "ospf",
+    "os-support",
+    "parser",
+    "sysadmin",
+    "xr"
+]
+
+version_regexs = {
+                  # 61117I or 611 or 6.1.1.17I or 6.1.1
+                  "ncs5k": re.compile("(?P<VERSION>(\d+\d+\d+(\d+\w+)?)|(\d+\.\d+\.\d+(\.\d+\w+)?)(?!\.\d)(?!-))"),
+                  # 61117I or 611 or 6.1.1.17I or 6.1.1
+                  "ncs5500": re.compile("(?P<VERSION>(\d+\d+\d+(\d+\w+)?)|(\d+\.\d+\.\d+(\.\d+\w+)?)(?!\.\d)(?!-))"),
+                  # 5.2.4 or 5.2.4.47I
+                  "ncs6k": re.compile("(?P<VERSION>\d+\.\d+\.\d+(\.\d+\w+)?)"),
                   # 61117I or 611 or 6.1.1.17I or 6.1.1
                   "asr9k": re.compile("(?P<VERSION>(\d+\d+\d+(\d+\w+)?)|(\d+\.\d+\.\d+(\.\d+\w+)?)(?!\.\d)(?!-))")
                   }
+
 smu_re = re.compile("(?P<SMU>CSC[a-z]{2}\d{5})")
-subversion_regexs = {"ncs6k": re.compile("CSC.*(?P<SUBVERSION>\d+\.\d+\.\d+?)"),  # 0.0.4
-                     "asr9k": re.compile("-(?P<SUBVERSION>\d+\.\d+\.\d+\.\d+)-")   # 2.0.0.0
+
+subversion_regexs = {
+                     "ncs5k": re.compile("-(?P<SUBVERSION>\d+\.\d+\.\d+\.\d+)-"),     # 2.0.0.0
+                     "ncs5500": re.compile("-(?P<SUBVERSION>\d+\.\d+\.\d+\.\d+)-"),   # 2.0.0.0
+                     "ncs6k": re.compile("CSC.*(?P<SUBVERSION>\d+\.\d+\.\d+?)"),      # 0.0.4
+                     "asr9k": re.compile("-(?P<SUBVERSION>\d+\.\d+\.\d+\.\d+)-")      # 2.0.0.0
                      }
 
 
@@ -99,9 +168,7 @@ class SoftwarePackage(object):
 
     @property
     def package_type(self):
-        if not self.platform or not package_types.get(self.platform):
-            return None
-        for package_type in package_types.get(self.platform):
+        for package_type in package_types:
             if "-" + package_type + "-" in self.package_name:
                 return package_type
         else:
@@ -111,6 +178,7 @@ class SoftwarePackage(object):
     def version(self):
         if not self.platform or not version_regexs.get(self.platform):
             return None
+
         result = re.search(version_regexs.get(self.platform), self.package_name)
 
         return result.group("VERSION") if result else None
@@ -124,9 +192,12 @@ class SoftwarePackage(object):
     def subversion(self):
         if not self.platform or not subversion_regexs.get(self.platform):
             return None
-        if self.platform == "asr9k" or self.smu:
+
+        # For NCS6K, only need to consider subversion if it is a SMU.
+        if self.platform in ["ncs5k", "ncs5500", "asr9k"] or self.smu:
             result = re.search(subversion_regexs.get(self.platform), self.package_name)
             return result.group("SUBVERSION") if result else None
+
         return None
 
     def is_valid(self):
