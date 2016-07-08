@@ -129,6 +129,7 @@ package_types = [
     "ospf",
     "os-support",
     "parser",
+    "rm",
     "sysadmin",
     "xr"
 ]
