@@ -107,7 +107,7 @@ ncs5500-parser-1.0.0.0-r601.x86_64.rpm-6.0.1                  ncs5500-parser-1.0
 """
 import re
 
-platforms = ["ncs5k", "ncs5500", "ncs6k", "asr9k"]
+platforms = ['asr9k', 'ncs1k', 'ncs5k', 'ncs5500', 'ncs6k']
 # This list will cover all eXR platforms.  They are arranged in alphabetical order for human consumption.
 package_types = [
     "bgp",
@@ -136,24 +136,22 @@ package_types = [
     "xr"
 ]
 
-version_regexs = {
+version_dict = {
                   # 61117I or 611 or 6.1.1.17I or 6.1.1
-                  "ncs5k": re.compile("(?P<VERSION>(\d+\d+\d+(\d+\w+)?)|(\d+\.\d+\.\d+(\.\d+\w+)?)(?!\.\d)(?!-))"),
-                  # 61117I or 611 or 6.1.1.17I or 6.1.1
-                  "ncs5500": re.compile("(?P<VERSION>(\d+\d+\d+(\d+\w+)?)|(\d+\.\d+\.\d+(\.\d+\w+)?)(?!\.\d)(?!-))"),
+                  "asr9k, ncs1k, ncs5k, ncs5500":
+                      re.compile("(?P<VERSION>(\d+\d+\d+(\d+\w+)?)|(\d+\.\d+\.\d+(\.\d+\w+)?)(?!\.\d)(?!-))"),
                   # 5.2.4 or 5.2.4.47I
-                  "ncs6k": re.compile("(?P<VERSION>\d+\.\d+\.\d+(\.\d+\w+)?)"),
-                  # 61117I or 611 or 6.1.1.17I or 6.1.1
-                  "asr9k": re.compile("(?P<VERSION>(\d+\d+\d+(\d+\w+)?)|(\d+\.\d+\.\d+(\.\d+\w+)?)(?!\.\d)(?!-))")
+                  "ncs6k":
+                      re.compile("(?P<VERSION>\d+\.\d+\.\d+(\.\d+\w+)?)"),
                   }
 
 smu_re = re.compile("(?P<SMU>CSC[a-z]{2}\d{5})")
 
-subversion_regexs = {
-                     "ncs5k": re.compile("-(?P<SUBVERSION>\d+\.\d+\.\d+\.\d+)-"),     # 2.0.0.0
-                     "ncs5500": re.compile("-(?P<SUBVERSION>\d+\.\d+\.\d+\.\d+)-"),   # 2.0.0.0
-                     "ncs6k": re.compile("CSC.*(?P<SUBVERSION>\d+\.\d+\.\d+?)"),      # 0.0.4
-                     "asr9k": re.compile("-(?P<SUBVERSION>\d+\.\d+\.\d+\.\d+)-")      # 2.0.0.0
+subversion_dict = {
+                     "asr9k, ncs1k, ncs5k, ncs5500":
+                         re.compile("-(?P<SUBVERSION>\d+\.\d+\.\d+\.\d+)-"),  # 2.0.0.0
+                     "ncs6k":
+                         re.compile("CSC.*(?P<SUBVERSION>\d+\.\d+\.\d+?)"),   # 0.0.4
                      }
 
 
@@ -179,10 +177,10 @@ class SoftwarePackage(object):
 
     @property
     def version(self):
-        if not self.platform or not version_regexs.get(self.platform):
+        if not self.platform or not self.get_values(version_dict, self.platform):
             return None
 
-        result = re.search(version_regexs.get(self.platform), self.package_name)
+        result = re.search(self.get_values(version_dict, self.platform), self.package_name)
 
         return result.group("VERSION") if result else None
 
@@ -193,14 +191,20 @@ class SoftwarePackage(object):
 
     @property
     def subversion(self):
-        if not self.platform or not subversion_regexs.get(self.platform):
+        if not self.platform or not self.get_values(subversion_dict, self.platform):
             return None
 
         # For NCS6K, only need to consider subversion if it is a SMU.
-        if self.platform in ["ncs5k", "ncs5500", "asr9k"] or self.smu:
-            result = re.search(subversion_regexs.get(self.platform), self.package_name)
+        if self.platform in ["asr9k", "ncs1k", "ncs5k", "ncs5500"] or self.smu:
+            result = re.search(self.get_values(subversion_dict, self.platform), self.package_name)
             return result.group("SUBVERSION") if result else None
 
+        return None
+
+    def get_values(self, dictionary, key):
+        for keys in dictionary.keys():
+            if key in keys.split(','):
+                return dictionary.get(keys)
         return None
 
     def is_valid(self):
@@ -228,6 +232,7 @@ class SoftwarePackage(object):
     def from_show_cmd(cmd):
         software_packages = set()
         data = cmd.split()
+
         for line in data:
             software_package = SoftwarePackage(line)
             if software_package.is_valid():
