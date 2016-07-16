@@ -733,7 +733,7 @@ class Plugin(CSMPlugin):
         for file_path in files:
             # file = '../../csm_data/migration/<hostname>' + filename
             file_to_write = open(file_path, 'w+')
-            file_to_write.write(output[(ind+1):])
+            file_to_write.write(output[(ind + 1):])
             file_to_write.close()
 
     def _handle_configs(self, hostname, server, repo_url, fileloc, nox_to_use, config_filename):
