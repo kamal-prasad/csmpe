@@ -136,7 +136,7 @@ package_types = [
     "xr"
 ]
 
-version_dict = {"asr9k, ncs1k, ncs5k, ncs5500":  # 61117I or 611 or 6.1.1.17I or 6.1.1
+version_dict = {"asr9k ncs1k ncs5k ncs5500":  # 61117I or 611 or 6.1.1.17I or 6.1.1
                 re.compile("(?P<VERSION>(\d+\d+\d+(\d+\w+)?)|(\d+\.\d+\.\d+(\.\d+\w+)?)(?!\.\d)(?!-))"),
                 "ncs6k":                         # 5.2.4 or 5.2.4.47I
                 re.compile("(?P<VERSION>\d+\.\d+\.\d+(\.\d+\w+)?)"),
@@ -144,7 +144,7 @@ version_dict = {"asr9k, ncs1k, ncs5k, ncs5500":  # 61117I or 611 or 6.1.1.17I or
 
 smu_re = re.compile("(?P<SMU>CSC[a-z]{2}\d{5})")
 
-subversion_dict = {"asr9k, ncs1k, ncs5k, ncs5500":
+subversion_dict = {"asr9k ncs1k ncs5k ncs5500":
                    re.compile("-(?P<SUBVERSION>\d+\.\d+\.\d+\.\d+)-"),  # 2.0.0.0
                    "ncs6k":
                    re.compile("CSC.*(?P<SUBVERSION>\d+\.\d+\.\d+?)"),   # 0.0.4
@@ -177,7 +177,6 @@ class SoftwarePackage(object):
             return None
 
         result = re.search(self.get_values(version_dict, self.platform), self.package_name)
-
         return result.group("VERSION") if result else None
 
     @property
@@ -199,7 +198,7 @@ class SoftwarePackage(object):
 
     def get_values(self, dictionary, key):
         for keys in dictionary.keys():
-            if key in keys.split(','):
+            if key in keys.split():
                 return dictionary.get(keys)
         return None
 
