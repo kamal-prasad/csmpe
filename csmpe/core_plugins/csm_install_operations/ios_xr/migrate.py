@@ -188,7 +188,7 @@ class Plugin(CSMPlugin):
         return True
 
     def run(self):
-
+        host = None
         try:
             host = self.ctx.get_host
         except AttributeError:

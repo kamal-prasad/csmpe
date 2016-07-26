@@ -46,15 +46,16 @@ from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_packa
 MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.3"
 RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU = "6.1.1"
 
-NOX_64_BINARY = "nox-linux-64.bin"
 # NOX_32_BINARY = "nox_linux_32bit_6.0.0v3.bin"
-NOX_FOR_MAC = "nox-mac64"
+NOX_FOR_MAC = "nox-mac64.bin"
+NOX_64_BINARY = "nox-linux-64.bin"
 
 TIMEOUT_FOR_COPY_CONFIG = 3600
-TIMEOUT_FOR_COPY_IMAGE = 960
+TIMEOUT_FOR_COPY_IMAGE = 1200
 TIMEOUT_FOR_FPD_UPGRADE = 9600
 
-IMAGE_LOCATION = "harddiskb:/"
+IMAGE_LOCATION = "harddisk:/"
+CONFIG_LOCATION = "harddiskb:/"
 
 ROUTEPROCESSOR_RE = '\d+/RS??P\d+/CPU\d+'
 LINECARD_RE = '\d+/\d+/CPU\d+'
@@ -261,17 +262,20 @@ class Plugin(CSMPlugin):
             CONFIRM_FILENAME = re.compile("Destination filename.*\?")
             CONFIRM_OVERWRITE = re.compile("Copy : Destination exists, overwrite \?\[confirm\]")
             COPIED = re.compile(".+bytes copied in.+ sec")
+            COPYING = re.compile("C"*50)
             NO_SUCH_FILE = re.compile("%Error copying.*\(Error opening source file\): No such file or directory")
             ERROR_COPYING = re.compile("%Error copying")
 
             PROMPT = self.ctx.prompt
             TIMEOUT = self.ctx.TIMEOUT
 
-            events = [PROMPT, CONFIRM_FILENAME, CONFIRM_OVERWRITE, COPIED, TIMEOUT, NO_SUCH_FILE, ERROR_COPYING]
+            events = [PROMPT, CONFIRM_FILENAME, CONFIRM_OVERWRITE, COPIED, COPYING,
+                      TIMEOUT, NO_SUCH_FILE, ERROR_COPYING]
             transitions = [
                 (CONFIRM_FILENAME, [0], 1, send_newline, timeout),
                 (CONFIRM_OVERWRITE, [1], 2, send_newline, timeout),
                 (COPIED, [1, 2], 3, None, 20),
+                (COPYING, [1, 2], 2, send_newline, timeout),
                 (PROMPT, [3], -1, None, 0),
                 (TIMEOUT, [0, 1, 2, 3], -1, error, 0),
                 (NO_SUCH_FILE, [0, 1, 2, 3], -1, error, 0),
@@ -282,7 +286,8 @@ class Plugin(CSMPlugin):
                                                                                  source_filenames[x],
                                                                                  dest_files[x]))
 
-            if not self.ctx.run_fsm("Copy file from tftp/ftp to device", command, events, transitions, timeout=20):
+            if not self.ctx.run_fsm("Copy file from tftp/ftp to device", command, events, transitions,
+                                    timeout=20, max_transitions=40):
                 self.ctx.error("Error copying {}/{} to {} on device".format(repository,
                                                                             source_filenames[x],
                                                                             dest_files[x]))
@@ -468,18 +473,18 @@ class Plugin(CSMPlugin):
         self.ctx.send("run", wait_for_string="#")
         output = self.ctx.send("ksh /pkg/bin/resize_eusb", wait_for_string="#")
         self.ctx.send("exit")
-        if "eUSB partition completed." not in output:
-            self.ctx.error("eUSB partition failed. Please check session.log.")
-        output = self.ctx.send("show media")
+        if "Pre-Migration Operation Completed." not in output:
+            self.ctx.error("Pre-Migrate partition check failed. Please check session.log.")
+        # output = self.ctx.send("show media")
 
-        eusb_size = re.search("/harddiskb:.* ([.\d]+)G", output)
+        # eusb_size = re.search("/harddiskb:.* ([.\d]+)G", output)
 
-        if not eusb_size:
-            self.ctx.error("Unexpected output from CLI 'show media'.")
+        # if not eusb_size:
+        #    self.ctx.error("Unexpected output from CLI 'show media'.")
 
-        if eusb_size.group(1) < "1.0":
-            self.ctx.error("/harddiskb:/ is smaller than 1 GB after running /pkg/bin/resize_eusb. " +
-                           "Please make sure that the device has either RP2 or RSP4.")
+        # if eusb_size.group(1) < "1.0":
+        #    self.ctx.error("/harddiskb:/ is smaller than 1 GB after running /pkg/bin/resize_eusb. " +
+        #                   "Please make sure that the device has either RP2 or RSP4.")
 
     def _check_fpd(self, nodes_to_check):
         """
@@ -508,13 +513,52 @@ class Plugin(CSMPlugin):
 
         return subtype_to_locations_need_upgrade
 
-    def _ensure_updated_fpd(self, packages, fpd_relevant_nodes, version):
+    def _check_if_fpd_packages_installed(self, version, packages):
+        """
+        1. Check if the FPD package is already active on device.
+           Error out if not.
+        2. Check if the FPD SMU is selected when scheduling Pre-Migrate,
+            if the version is below RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU
+        :param version: the current version of software. i.e., "5.3.3"
+        :param packages:  all user selected packages from scheduling the Pre-Migrate
+        :return: all .pie packages selected when scheduling Pre-Migrate
+                   if no error (if the FPD package is installed,
+                   and the FPD SMU is installed if version is below
+                   RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU
+        """
+        active_packages = self.ctx.send("show install active summary")
+
+        match = re.search("fpd", active_packages)
+
+        if not match:
+            self.ctx.error("No FPD package is active on device. Please install the FPD package on device first.")
+        pie_packages = []
+
+        if version < RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU:
+            log_and_post_status(self.ctx, "Checking if a FPD SMU was selected.")
+
+            for package in packages:
+                if package.find(".pie") > -1:
+                    pie_packages.append(package)
+
+            if len(pie_packages) > 1:
+                self.ctx.error("More than one '.pie' package selected when scheduling Pre-Migrate. Current " +
+                               "version number is below {},".format(RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU) +
+                               "so please only select one unified FPD SMU pie " +
+                               "from server repository when scheduling Pre-Migrate.")
+            elif len(pie_packages) == 0:
+                self.ctx.error("No '.pie' package selected when scheduling Pre-Migrate. Current " +
+                               "version number is below {},".format(RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU) +
+                               "Please select one unified FPD SMU pie " +
+                               "from server repository when scheduling Pre-Migrate.")
+        return pie_packages
+
+    def _ensure_updated_fpd(self, fpd_relevant_nodes, version, pie_packages):
         """
         Upgrade FPD's if needed.
         Steps:
-        1. Check if the FPD package is already active on device.
-           Error out if not.
-        2. Check if the same FPD SMU is already active on device.
+        2. If current version is below RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU,
+           check if the FPD SMU is already active on device.
            (Possibly by a previous Pre-Migrate action)
         3. Install add, activate and commit the FPD SMU if SMU is not installed.
         4. Check version of the migration related FPD's. Get the dictionary
@@ -530,27 +574,12 @@ class Plugin(CSMPlugin):
                                     we get this list from running
                                     hardware audit plugin
         :param version: the current version of software. i.e., "5.3.3"
+        :param pie_packages: a list containing only the name of the selected FPD SMU
         :return: True if no error occurred.
         """
 
-        log_and_post_status(self.ctx, "Checking if FPD package is actively installed...")
-        active_packages = self.ctx.send("show install active summary")
-
-        match = re.search("fpd", active_packages)
-
-        if not match:
-            self.ctx.error("No FPD package is active on device. Please install the FPD package on device first.")
-
         if version < RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU:
-            log_and_post_status(self.ctx, "Checking if the FPD SMU has been installed...")
-            pie_packages = []
-            for package in packages:
-                if package.find(".pie") > -1:
-                    pie_packages.append(package)
-
-            if len(pie_packages) != 1:
-                self.ctx.error("Please select exactly one FPD SMU pie on server repository for FPD upgrade. " +
-                               "The filename must contains '.pie'")
+            log_and_post_status(self.ctx, "Checking if the FPD SMU has been installed.")
 
             name_of_fpd_smu = pie_packages[0].split(".pie")[0]
 
@@ -809,7 +838,7 @@ class Plugin(CSMPlugin):
                 config_names_on_device.append(XR_CONFIG_ON_DEVICE)
 
             self._copy_files_to_device(server, repo_url, config_names_in_repo,
-                                       [IMAGE_LOCATION + config_name
+                                       [CONFIG_LOCATION + config_name
                                         for config_name in config_names_on_device],
                                        timeout=TIMEOUT_FOR_COPY_CONFIG)
 
@@ -853,11 +882,11 @@ class Plugin(CSMPlugin):
         except AttributeError:
             self.ctx.error("No package list provided")
 
-        try:
-            config_filename = self.ctx.pre_migrate_config_filename
-        except AttributeError:
-            pass
+        config_filename = None
+        if self.ctx.load_data('config_filename'):
+            config_filename = self.ctx.load_data('config_filename')[0]
 
+        server = None
         try:
             server = self.ctx.get_server
         except AttributeError:
@@ -865,10 +894,12 @@ class Plugin(CSMPlugin):
 
         if server is None:
             self.ctx.error("No server repository selected")
-        try:
-            override_hw_req = self.ctx.pre_migrate_override_hw_req
-        except AttributeError:
-            self.ctx.error("No indication for whether to override hardware requirement or not.")
+
+        override_hw_req = None
+        if self.ctx.load_data('override_hw_req'):
+            override_hw_req = self.ctx.load_data('override_hw_req')[0]
+        if not override_hw_req:
+            self.ctx.error("No indication of whether to override hardware requirement or not.")
 
         exr_image = self._get_exr_tar_package(packages)
         version_match = re.findall("\d+\.\d+\.\d+", exr_image)
@@ -888,13 +919,19 @@ class Plugin(CSMPlugin):
             os.makedirs(fileloc)
 
         self.ctx.save_data('hardware_audit_software_version', exr_version)
-        self.ctx.save_data('override_hw_req', override_hw_req)
+        self.ctx.save_data('hardware_audit_override_hw_req', override_hw_req)
         hardware_audit_plugin = HardwareAuditPlugin(self.ctx)
         hardware_audit_plugin.run()
 
+        # reset the values so that the hardware audit will not assume that the request
+        # came from Pre-Migrate the next time hardware audit runs.
+        self.ctx.save_data('hardware_audit_software_version', '')
+        self.ctx.save_data('hardware_audit_override_hw_req', '')
+
+        fpd_relevant_nodes = None
         if self.ctx.load_data('fpd_relevant_nodes'):
             fpd_relevant_nodes = self.ctx.load_data('fpd_relevant_nodes')[0]
-        else:
+        if not fpd_relevant_nodes:
             self.ctx.error("No data field fpd_relevant_nodes after completing hardware audit successfully.")
 
         log_and_post_status(self.ctx, "Checking current software version.")
@@ -908,23 +945,26 @@ class Plugin(CSMPlugin):
 
         if version < MINIMUM_RELEASE_VERSION_FOR_MIGRATION:
             self.ctx.error("The minimal release version required for migration is 5.3.3. " +
-                           "Please upgrade to at lease R5.3.3 before scheduling migration.")
+                           "Please upgrade to at lease 5.3.3 before scheduling migration.")
 
         log_and_post_status(self.ctx, "Testing ping to selected server repository IP.")
         self._ping_repository_check(server_repo_url)
 
-        self._save_show_platform()
+        log_and_post_status(self.ctx, "Checking if FPD package is active on device.")
+        pie_packages = self._check_if_fpd_packages_installed(version, packages)
 
-        log_and_post_status(self.ctx, "Resizing eUSB partition.")
-        self._resize_eusb()
+        nox_to_use = self.ctx.migration_directory + self._find_nox_to_use()
 
-        # nox_to_use = self.ctx.migration_directory + self._find_nox_to_use()
-
-        nox_to_use = self.ctx.migration_directory + NOX_FOR_MAC
+        # nox_to_use = self.ctx.migration_directory + NOX_FOR_MAC
 
         if not os.path.isfile(nox_to_use):
             self.ctx.error("The configuration conversion tool {} is missing. ".format(nox_to_use) +
                            "CSM should have downloaded it from CCO when migration actions were scheduled.")
+
+        self._save_show_platform()
+
+        log_and_post_status(self.ctx, "Partition check and disk clean-up.")
+        self._resize_eusb()
 
         self._handle_configs(hostname_for_filename, server,
                              server_repo_url, fileloc, nox_to_use, config_filename)
@@ -933,7 +973,7 @@ class Plugin(CSMPlugin):
         self._copy_files_to_device(server, server_repo_url, [exr_image],
                                    [IMAGE_LOCATION + exr_image], timeout=TIMEOUT_FOR_COPY_IMAGE)
 
-        self._ensure_updated_fpd(packages, fpd_relevant_nodes, version)
+        self._ensure_updated_fpd(fpd_relevant_nodes, version, pie_packages)
 
         # Refresh package information
         get_package(self.ctx)

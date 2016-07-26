@@ -69,10 +69,8 @@ class Host(object):
 
 
 @delegate("_csm", ("post_status",), ("custom_commands", "success", "operation_id", "server_repository_url",
-                                     "software_packages", "hostname",
-                                     "log_directory", "pre_migrate_config_filename", "migration_directory",
-                                     "post_migrate_config_handling_option", "get_server", "get_host",
-                                     "pre_migrate_override_hw_req", "hardware_audit_software_version"))
+                                     "software_packages", "hostname", "log_directory", "migration_directory",
+                                     "get_server", "get_host"))
 @delegate("_connection", ("connect", "disconnect", "reconnect", "discovery", "send", "run_fsm", "reload"),
           ("family", "prompt", "os_type", "os_version"))
 class PluginContext(object):

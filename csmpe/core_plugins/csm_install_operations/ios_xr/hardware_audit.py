@@ -29,8 +29,7 @@ import re
 import json
 
 from csmpe.plugins import CSMPlugin
-from migration_lib import SUPPORTED_HW_JSON, log_and_post_status
-from csmpe.core_plugins.csm_node_status_check.ios_xr.plugin_lib import parse_show_platform
+from migration_lib import SUPPORTED_HW_JSON, log_and_post_status, parse_admin_show_platform
 
 
 ROUTEPROCESSOR_RE = '\d+/RS??P\d+/CPU\d+'
@@ -157,8 +156,8 @@ class Plugin(CSMPlugin):
                                "supported hardware for ASR9K-X64.")
 
             if supported and value['state'] != operational_state:
-                self.ctx.error("{}={}: Not in valid operational state for migration. ".format(node_name, value) +
-                               "Operational state: {}", operational_state)
+                self.ctx.error("{} is supported in ASR9K 64 bit, but it's in {}".format(node_name, value['state']) +
+                               " state. Valid operational state for migration: {}".format(operational_state))
             if supported:
                 return 1
             else:
@@ -167,26 +166,26 @@ class Plugin(CSMPlugin):
 
     def run(self):
 
-        try:
-            software_version = self.ctx.hardware_audit_software_version
-            print "software_version = " + str(software_version)
+        software_version = None
+        # First checks if the request came from Pre-Migrate
+        if self.ctx.load_data('hardware_audit_software_version'):
+            software_version = self.ctx.load_data('hardware_audit_software_version')[0]
+        # Then checks if the request came from Migration-Audit
+        if not software_version and self.ctx.load_data('hardware_audit_version'):
+            software_version = self.ctx.load_data('hardware_audit_version')[0]
+
+        if not software_version:
+            self.ctx.error("No software version selected.")
+        else:
             self.ctx.info("Hardware audit for software release version " + str(software_version))
-        except AttributeError:
-            if self.ctx.load_data('software_version'):
-                software_version = self.ctx.load_data('software_version')[0]
-                self.ctx.info("Hardware audit for software release version " + str(software_version))
-            else:
-                self.ctx.error("No software version selected.")
 
-        try:
-            override_hw_req = self.ctx.pre_migrate_override_hw_req
-        except AttributeError:
-            override_hw_req = False
-
-        if override_hw_req:
+        if self.ctx.load_data('hardware_audit_override_hw_req') and \
+           self.ctx.load_data('hardware_audit_override_hw_req')[0] == "1":
+            override_hw_req = True
             log_and_post_status(self.ctx,
                                 "Running hardware audit to check minimal requirements for card types and states.")
         else:
+            override_hw_req = False
             log_and_post_status(self.ctx, "Running hardware audit on all nodes.")
 
         with open(SUPPORTED_HW_JSON) as supported_hw_file:
@@ -196,12 +195,13 @@ class Plugin(CSMPlugin):
             self.ctx.error("No hardware support information available for release {}.".format(software_version))
 
         output = self.ctx.send("admin show platform")
-        inventory = parse_show_platform(self.ctx, output)
+        inventory = parse_admin_show_platform(output)
 
         log_and_post_status(self.ctx, "Check if cards on device are supported for migration.")
         fpd_relevant_nodes = self._check_if_hw_supported_and_in_valid_state(inventory,
                                                                             supported_hw[software_version],
                                                                             override_hw_req)
         self.ctx.save_data("fpd_relevant_nodes", fpd_relevant_nodes)
+        log_and_post_status(self.ctx, "Hardware audit completed successfully.")
 
         return True

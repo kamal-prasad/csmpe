@@ -205,8 +205,11 @@ class Plugin(CSMPlugin):
         if match:
             total_num = len(re.findall("NEED UPGD", fpdtable)) + len(re.findall("CURRENT", fpdtable))
             if not self._upgrade_all_fpds(total_num):
+                self.ctx.send("exit")
                 self.ctx.error("FPD upgrade in eXR is not finished. Please check session.log.")
                 return False
+            else:
+                return True
 
         self.ctx.send("exit")
         return True
@@ -243,6 +246,7 @@ class Plugin(CSMPlugin):
                                         "Finished upgrading FPD(s). Now reloading the device to complete the upgrade.")
                     self.ctx.send("exit")
                     return self._reload_all()
+                self.ctx.send("exit")
                 return True
 
         # Some FPDs didn't finish upgrade
@@ -267,10 +271,10 @@ class Plugin(CSMPlugin):
         return True
 
     def run(self):
-
-        try:
-            best_effort_config = self.ctx.post_migrate_config_handling_option
-        except AttributeError:
+        best_effort_config = None
+        if self.ctx.load_data('best_effort_config_applying'):
+            best_effort_config = self.ctx.load_data('best_effort_config_applying')[0]
+        if not best_effort_config:
             self.ctx.error("No configuration handling option selected when scheduling post-migrate.")
 
         log_and_post_status(self.ctx, "Waiting for all nodes to come to FINAL Band.")

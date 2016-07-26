@@ -29,6 +29,39 @@ def parse_exr_admin_show_platform(output):
     return inventory
 
 
+def parse_admin_show_platform(output):
+    """
+    :param output: output from 'admin show platform' for ASR9K
+    :return: dictionary of nodes
+
+    ASR9K:
+    Node            Type                      State            Config State
+    -----------------------------------------------------------------------------
+    0/RSP0/CPU0     A9K-RSP440-SE(Active)     IOS XR RUN       PWR,NSHUT,MON
+    0/FT0/SP        ASR-9006-FAN              READY
+    0/1/CPU0        A9K-40GE-E                IOS XR RUN       PWR,NSHUT,MON
+    0/2/CPU0        A9K-MOD80-SE              UNPOWERED        NPWR,NSHUT,MON
+    0/3/CPU0        A9K-8T-L                  UNPOWERED        NPWR,NSHUT,MON
+    0/PS0/M0/SP     A9K-3KW-AC                READY            PWR,NSHUT,MON
+    0/PS0/M1/SP     A9K-3KW-AC                READY            PWR,NSHUT,MON
+    """
+    inventory = {}
+    lines = output.split('\n')
+    for line in lines:
+        line = line.strip()
+        if len(line) > 0 and line[0].isdigit():
+            node = line[:16].strip()
+            entry = {
+                'type': line[16:42].strip(),
+                'state': line[42:59].strip(),
+                'config_state': line[59:].strip()
+            }
+            inventory[node] = entry
+            print node
+
+    return inventory
+
+
 def get_all_supported_nodes(ctx, supported_cards):
     """Get the list of string node names(all available RSP/RP/LC) that are supported for migration."""
     supported_nodes = []
@@ -79,11 +112,13 @@ def wait_for_final_band(ctx):
 
     supported_nodes = get_all_supported_nodes(ctx, supported_hw.get(exr_version))
     # Wait for all nodes to Final Band
-    timeout = 1200
+    timeout = 1500
     poll_time = 20
     time_waited = 0
 
     cmd = "show platform vm"
+    # ctx.send("admin")
+    # cmd = "show platform"
     while 1:
         # Wait till all nodes are in FINAL Band
         time_waited += poll_time
@@ -96,16 +131,19 @@ def wait_for_final_band(ctx):
             if node not in output:
                 all_nodes_present = False
                 break
-            print "supported node that is in show platform vm = " + str(node)
         if all_nodes_present and check_sw_status(output):
             return True
-
+        """
+        if check_sw_status_admin(supported_nodes, output):
+            ctx.send("exit")
+        """
+    # ctx.send("exit")
     # Some nodes did not come to FINAL Band
     return False
 
 
 def check_sw_status(output):
-    """Check is a node has FINAL Band status"""
+    """Check if a node has FINAL Band status"""
     lines = output.splitlines()
 
     for line in lines:
@@ -114,4 +152,19 @@ def check_sw_status(output):
             sw_status = line[48:64].strip()
             if "FINAL Band" not in sw_status:
                 return False
+    return True
+
+
+def check_sw_status_admin(supported_nodes, output):
+    """Check if a node is in OPERATIONAL status"""
+    lines = output.splitlines()
+
+    for line in lines:
+        line = line.strip()
+        if len(line) > 0 and line[0].isdigit():
+            node = line[0:10].strip()
+            if node in supported_nodes:
+                sw_status = line[48:62].strip()
+                if "OPERATIONAL" not in sw_status:
+                    return False
     return True
