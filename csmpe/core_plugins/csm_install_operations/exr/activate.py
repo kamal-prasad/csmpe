@@ -36,7 +36,7 @@ from csmpe.core_plugins.csm_install_operations.utils import update_device_info_u
 class Plugin(CSMPlugin):
     """This plugin Activates packages on the device."""
     name = "Install Activate Plugin"
-    platforms = {'NCS5K', 'NCS5500', 'NCS6K', 'ASR9K'}
+    platforms = {'ASR9K', 'NCS1K', 'NCS5K', 'NCS5500', 'NCS6K'}
     phases = {'Activate'}
     os = {'eXR'}
 

@@ -36,7 +36,7 @@ install_requires = [
     "stevedore",
     "pkginfo",
     "click",
-    "condoor",
+    "condoor>=0.0.9",
     "sphinx",
     "sphinx_rtd_theme",
 ]

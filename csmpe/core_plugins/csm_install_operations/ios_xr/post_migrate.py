@@ -29,7 +29,7 @@ import re
 import time
 
 from csmpe.plugins import CSMPlugin
-from condoor.exceptions import CommandTimeoutError, CommandSyntaxError
+from condoor.exceptions import CommandSyntaxError
 from csmpe.context import PluginError
 from migration_lib import wait_for_final_band, log_and_post_status
 from csmpe.core_plugins.csm_custom_commands_capture.plugin import Plugin as CmdCapturePlugin
@@ -173,7 +173,7 @@ class Plugin(CSMPlugin):
         if cmd:
             try:
                 self.ctx.send(cmd)
-            except CommandSyntaxError as e:
+            except CommandSyntaxError:
                 pass
 
         if commit_with_best_effort == -1:

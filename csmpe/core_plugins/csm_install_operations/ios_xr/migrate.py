@@ -31,8 +31,8 @@ from csmpe.plugins import CSMPlugin
 from csmpe.context import PluginError
 from csmpe.core_plugins.csm_custom_commands_capture.plugin import Plugin as CmdCapturePlugin
 from condoor.controllers.protocols.base import PASSWORD_PROMPT, USERNAME_PROMPT, PERMISSION_DENIED, \
-                                               AUTH_FAILED, RESET_BY_PEER, SET_USERNAME, SET_PASSWORD, \
-                                               PASSWORD_OK, PRESS_RETURN, UNABLE_TO_CONNECT
+    AUTH_FAILED, RESET_BY_PEER, SET_USERNAME, SET_PASSWORD, \
+    PASSWORD_OK, PRESS_RETURN, UNABLE_TO_CONNECT
 from condoor.controllers.protocols.telnet import ESCAPE_CHAR, CONNECTION_REFUSED
 from condoor.exceptions import ConnectionError, ConnectionAuthenticationError
 from migration_lib import wait_for_final_band, log_and_post_status
