@@ -262,7 +262,7 @@ class Plugin(CSMPlugin):
             CONFIRM_FILENAME = re.compile("Destination filename.*\?")
             CONFIRM_OVERWRITE = re.compile("Copy : Destination exists, overwrite \?\[confirm\]")
             COPIED = re.compile(".+bytes copied in.+ sec")
-            COPYING = re.compile("C"*50)
+            COPYING = re.compile("C" * 50)
             NO_SUCH_FILE = re.compile("%Error copying.*\(Error opening source file\): No such file or directory")
             ERROR_COPYING = re.compile("%Error copying")
 
