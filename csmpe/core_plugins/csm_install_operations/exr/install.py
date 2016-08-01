@@ -300,7 +300,12 @@ def handle_reload_activate_deactivate(fsm_ctx):
     if op_id == -1:
         return False
 
-    watch_operation(plugin_ctx, op_id)
+    try:
+        watch_operation(plugin_ctx, op_id)
+    except plugin_ctx.CommandTimeoutError:
+        # The device already started the reload
+        pass
+
     success = wait_for_reload(plugin_ctx)
     if not success:
         plugin_ctx.error("Reload or boot failure")
