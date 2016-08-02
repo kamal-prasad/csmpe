@@ -206,13 +206,8 @@ class SoftwarePackage(object):
         return self.platform and self.version and (self.package_type or self.smu)
 
     def __eq__(self, other):
-        package_type_same = False
-        if (self.package_type == "xr" or self.package_type == "mini" or self.package_type == "full") and \
-           (other.package_type == "xr" or other.package_type == "mini" or other.package_type == "full"):
-            package_type_same = True
-
         result = self.platform == other.platform and \
-            (package_type_same or self.package_type == other.package_type) and \
+            (self.package_type == other.package_type) and \
             self.version == other.version and \
             self.smu == other.smu and \
             (self.subversion == other.subversion if self.subversion and other.subversion else True)
