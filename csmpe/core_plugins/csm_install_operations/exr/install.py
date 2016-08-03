@@ -40,6 +40,20 @@ def log_install_errors(ctx, output):
             ctx.warning(line)
 
 
+def check_ncs6k_release(ctx):
+    """
+    Only release 5.2.5 and above are supported by the plugin.
+    """
+    if ctx.family == 'NCS6K':
+        packages = ctx.software_packages
+        if packages is not None:
+            for package_name in packages:
+                matches = re.findall("\d+\.\d+\.\d+", package_name)
+                if matches:
+                    if matches[0] < '5.2.5':
+                        ctx.error('Abort: Software package earlier than release 5.2.5 for NCS6K is not supported.')
+
+
 def watch_operation(ctx, op_id=0):
     """
     Watch for the non-reload situation.  Upon issuing add/activate/commit/remove/deactivate, the install operation

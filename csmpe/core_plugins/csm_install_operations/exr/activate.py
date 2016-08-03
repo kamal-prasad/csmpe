@@ -29,6 +29,7 @@ from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
 from install import install_activate_deactivate
 from install import send_admin_cmd
+from install import check_ncs6k_release
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 from csmpe.core_plugins.csm_install_operations.utils import update_device_info_udi
 
@@ -94,6 +95,8 @@ class Plugin(CSMPlugin):
         """
         Performs install activate operation
         """
+        check_ncs6k_release(self.ctx)
+
         operation_id = None
         if hasattr(self.ctx, 'operation_id'):
             if self.ctx.operation_id != -1:

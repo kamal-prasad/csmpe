@@ -28,6 +28,7 @@ from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
 from install import install_activate_deactivate
 from install import send_admin_cmd
+from install import check_ncs6k_release
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
 
@@ -82,6 +83,8 @@ class Plugin(CSMPlugin):
         May 27 16:39:31     ncs6k-5.2.5.CSCuz65240-1.0.0
         May 27 16:39:36 Install operation will continue in the background
         """
+        check_ncs6k_release(self.ctx)
+
         operation_id = None
         if hasattr(self.ctx, 'operation_id'):
             if self.ctx.operation_id != -1:

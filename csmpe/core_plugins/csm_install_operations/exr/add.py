@@ -26,6 +26,7 @@
 
 from csmpe.plugins import CSMPlugin
 from install import observe_install_add_remove
+from install import check_ncs6k_release
 from csmpe.core_plugins.csm_install_operations.utils import ServerType, is_empty, concatenate_dirs
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
@@ -79,6 +80,8 @@ class Plugin(CSMPlugin):
         observe_install_add_remove(self.ctx, output, has_tar=has_tar)
 
     def run(self):
+        check_ncs6k_release(self.ctx)
+
         server_repository_url = self.ctx.server_repository_url
         if server_repository_url is None:
             self.ctx.error("No repository provided")
