@@ -108,33 +108,7 @@ ncs5500-parser-1.0.0.0-r601.x86_64.rpm-6.0.1                  ncs5500-parser-1.0
 import re
 
 platforms = ['asr9k', 'ncs1k', 'ncs5k', 'ncs5500', 'ncs6k']
-# This list will cover all eXR platforms.  They are arranged in alphabetical order for human consumption.
-package_types = [
-    "bgp",
-    "diags",
-    "doc",
-    "eigrp",
-    "full",
-    "fwding",
-    "infra",
-    "infra-test",
-    "isis",
-    "k9sec",
-    "li",
-    "m2m",
-    "mcast",
-    "mgbl",
-    "mini",
-    "mpls",
-    "mpls-te-rsvp",
-    "optic",
-    "ospf",
-    "os-support",
-    "parser",
-    "rm",
-    "sysadmin",
-    "xr"
-]
+
 
 version_dict = {"asr9k ncs1k ncs5k ncs5500":  # 61117I or 611 or 6.1.1.17I or 6.1.1
                 re.compile("(?P<VERSION>(\d+\d+\d+(\d+\w+)?)|(\d+\.\d+\.\d+(\.\d+\w+)?)(?!\.\d)(?!-))"),
@@ -165,11 +139,21 @@ class SoftwarePackage(object):
 
     @property
     def package_type(self):
-        for package_type in package_types:
-            if "-" + package_type + "-" in self.package_name:
+        platform = self.platform
+        pattern = '-\d+\.\d+\.\d+' if platform == 'ncs6k' else '-\d\.\d\.\d.\d'
+
+        if platform and platform in self.package_name and 'CSC' not in self.package_name:
+            match = re.search(pattern, self.package_name)
+            if match:
+                package_type = self.package_name[0:match.start()].replace(platform + '-', '')
                 return package_type
-        else:
-            return None
+
+        exceptions = ['full', 'mini', 'sysadmin', 'xr']
+        for exception in exceptions:
+            if exception in self.package_name:
+                return exception
+
+        return None
 
     @property
     def version(self):
