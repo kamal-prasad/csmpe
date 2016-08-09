@@ -128,23 +128,29 @@ subversion_dict = {"asr9k ncs1k ncs5k ncs5500":
 class SoftwarePackage(object):
     def __init__(self, package_name):
         self.package_name = package_name
+
+        self._platform = None
         self._package_type = None
+        self._version = None
+        self._smu = None
+        self._subversion = None
 
     @property
     def platform(self):
-        for platform in platforms:
-            if platform + "-" in self.package_name:
-                return platform
-        else:
-            return None
+        if not self._platform:
+            for platform in platforms:
+                if platform + "-" in self.package_name:
+                    self._platform = platform
+                    break
+
+        return self._platform
 
     @property
     def package_type(self):
         if not self._package_type:
-            platform = self.platform
-            pattern = '-\d+\.\d+\.\d+' if platform == 'ncs6k' else '-\d\.\d\.\d.\d'
+            pattern = '-\d+\.\d+\.\d+' if self.platform == 'ncs6k' else '-\d\.\d\.\d.\d'
 
-            if platform and platform in self.package_name and 'CSC' not in self.package_name:
+            if self.platform and self.platform in self.package_name and 'CSC' not in self.package_name:
                 exceptions = ['full', 'mini', 'sysadmin', 'xr']
                 for exception in exceptions:
                     if exception in self.package_name:
@@ -154,34 +160,46 @@ class SoftwarePackage(object):
                 if not self._package_type:
                     match = re.search(pattern, self.package_name)
                     if match:
-                        self._package_type = self.package_name[0:match.start()].replace(platform + '-', '')
+                        self._package_type = self.package_name[0:match.start()].replace(self.platform + '-', '')
+
+                if self.platform == 'ncs6k' and self._package_type:
+                    # For external name (e.g. ncs6k-mgbl.pkg-5.2.5), need to further refine the name.
+                    self._package_type = self._package_type.replace('.pkg', '')
 
         return self._package_type
 
     @property
     def version(self):
-        if not self.platform or not self.get_values(version_dict, self.platform):
-            return None
+        if not self._version:
+            dict_values = self.get_values(version_dict, self.platform)
+            if self.platform and dict_values:
+                result = re.search(dict_values, self.package_name)
+                if result:
+                    self._version = result.group("VERSION")
 
-        result = re.search(self.get_values(version_dict, self.platform), self.package_name)
-        return result.group("VERSION") if result else None
+        return self._version
 
     @property
     def smu(self):
-        result = re.search(smu_re, self.package_name)
-        return result.group("SMU") if result else None
+        if not self._smu:
+            result = re.search(smu_re, self.package_name)
+            if result:
+                self._smu = result.group("SMU")
+
+        return self._smu
 
     @property
     def subversion(self):
-        if not self.platform or not self.get_values(subversion_dict, self.platform):
-            return None
+        if not self._subversion:
+            dict_values = self.get_values(subversion_dict, self.platform)
+            if self.platform and dict_values:
+                # For NCS6K, only need to consider subversion if it is a SMU.
+                if self.platform in ["asr9k", "ncs1k", "ncs5k", "ncs5500"] or self.smu:
+                    result = re.search(dict_values, self.package_name)
+                    if result:
+                        self._subversion = result.group("SUBVERSION")
 
-        # For NCS6K, only need to consider subversion if it is a SMU.
-        if self.platform in ["asr9k", "ncs1k", "ncs5k", "ncs5500"] or self.smu:
-            result = re.search(self.get_values(subversion_dict, self.platform), self.package_name)
-            return result.group("SUBVERSION") if result else None
-
-        return None
+        return self._subversion
 
     def get_values(self, dictionary, key):
         for keys in dictionary.keys():
