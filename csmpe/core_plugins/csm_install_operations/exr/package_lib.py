@@ -128,6 +128,7 @@ subversion_dict = {"asr9k ncs1k ncs5k ncs5500":
 class SoftwarePackage(object):
     def __init__(self, package_name):
         self.package_name = package_name
+        self._package_type = None
 
     @property
     def platform(self):
@@ -139,21 +140,23 @@ class SoftwarePackage(object):
 
     @property
     def package_type(self):
-        platform = self.platform
-        pattern = '-\d+\.\d+\.\d+' if platform == 'ncs6k' else '-\d\.\d\.\d.\d'
+        if not self._package_type:
+            platform = self.platform
+            pattern = '-\d+\.\d+\.\d+' if platform == 'ncs6k' else '-\d\.\d\.\d.\d'
 
-        if platform and platform in self.package_name and 'CSC' not in self.package_name:
-            match = re.search(pattern, self.package_name)
-            if match:
-                package_type = self.package_name[0:match.start()].replace(platform + '-', '')
-                return package_type
+            if platform and platform in self.package_name and 'CSC' not in self.package_name:
+                exceptions = ['full', 'mini', 'sysadmin', 'xr']
+                for exception in exceptions:
+                    if exception in self.package_name:
+                        self._package_type = exception
+                        break
 
-        exceptions = ['full', 'mini', 'sysadmin', 'xr']
-        for exception in exceptions:
-            if exception in self.package_name:
-                return exception
+                if not self._package_type:
+                    match = re.search(pattern, self.package_name)
+                    if match:
+                        self._package_type = self.package_name[0:match.start()].replace(platform + '-', '')
 
-        return None
+        return self._package_type
 
     @property
     def version(self):
