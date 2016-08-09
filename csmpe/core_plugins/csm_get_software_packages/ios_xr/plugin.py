@@ -39,6 +39,6 @@ class Plugin(CSMPlugin):
 
 
 def get_package(ctx):
-    ctx.save_data("cli_show_install_inactive", ctx.send("admin show install inactive"))
-    ctx.save_data("cli_show_install_active", ctx.send("admin show install active"))
-    ctx.save_data("cli_show_install_committed", ctx.send("admin show install committed"))
+    ctx.save_data("cli_show_install_inactive", ctx.send("admin show install inactive summary"))
+    ctx.save_data("cli_show_install_active", ctx.send("admin show install active summary"))
+    ctx.save_data("cli_show_install_committed", ctx.send("admin show install committed summary"))
