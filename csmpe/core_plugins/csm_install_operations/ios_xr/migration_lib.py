@@ -32,7 +32,7 @@ def parse_exr_admin_show_platform(output):
 def parse_admin_show_platform(output):
     """
     :param output: output from 'admin show platform' for ASR9K
-    :return: dictionary of nodes
+    :return: list of tuples of (node name, node info)
 
     ASR9K:
     Node            Type                      State            Config State
@@ -45,7 +45,7 @@ def parse_admin_show_platform(output):
     0/PS0/M0/SP     A9K-3KW-AC                READY            PWR,NSHUT,MON
     0/PS0/M1/SP     A9K-3KW-AC                READY            PWR,NSHUT,MON
     """
-    inventory = {}
+    inventory = []
     lines = output.split('\n')
     for line in lines:
         line = line.strip()
@@ -56,7 +56,7 @@ def parse_admin_show_platform(output):
                 'state': line[42:59].strip(),
                 'config_state': line[59:].strip()
             }
-            inventory[node] = entry
+            inventory.append((node, entry))
             print node
 
     return inventory

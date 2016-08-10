@@ -144,7 +144,7 @@ class Plugin(CSMPlugin):
             (USERNAME_PROMPT, [0, 1, 6, 7], 8, send_username, 10),
             (USERNAME_PROMPT, [8], 8, None, 10),
             (PASSWORD_PROMPT, [8], 9, send_password, 30),
-            (XR_PROMPT, [9, 10], -1, None, 10),
+            (XR_PROMPT, [0, 9, 10], -1, None, 10),
 
             (UNABLE_TO_CONNECT, [0, 1], 11, ConnectionError("Unable to connect", self.ctx._connection.hostname), 10),
             (CONNECTION_REFUSED, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11,

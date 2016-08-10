@@ -27,6 +27,7 @@ import re
 from time import time
 from datetime import datetime
 from csmpe.plugins import CSMPlugin
+from condoor.exceptions import CommandSyntaxError
 
 
 class Plugin(CSMPlugin):
@@ -57,7 +58,14 @@ class Plugin(CSMPlugin):
         """
         cmd = "show isis neighbor summary"
         isis_neighbor_info = {}
-        output = self.ctx.send(cmd)
+        try:
+            output = self.ctx.send(cmd)
+        except CommandSyntaxError:
+            # This will happen when the device is ASR9K-64 and the ISIS package is not installed.
+            self.ctx.info("The CLI 'show isis neighbor summary' is not available for checking the number " +
+                          "of ISIS neighbors. Possible reason: the ISIS package (if any) needs to be installed.")
+            return
+
         if output:
             isis_instance = None
             for line in output.split('\n'):

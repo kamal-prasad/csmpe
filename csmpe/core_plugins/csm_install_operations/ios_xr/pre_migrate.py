@@ -51,7 +51,7 @@ NOX_FOR_MAC = "nox-mac64.bin"
 NOX_64_BINARY = "nox-linux-64.bin"
 
 TIMEOUT_FOR_COPY_CONFIG = 3600
-TIMEOUT_FOR_COPY_IMAGE = 1200
+TIMEOUT_FOR_COPY_IMAGE = 1800
 TIMEOUT_FOR_FPD_UPGRADE = 9600
 
 IMAGE_LOCATION = "harddisk:/"
@@ -69,21 +69,19 @@ FC = '\d+/FC\d+/SP'
 FPDS_CHECK_FOR_UPGRADE = set(['cbc', 'rommon', 'fpga2', 'fsbl', 'lnxfw', 'fpga8', 'fclnxfw', 'fcfsbl'])
 
 XR_CONFIG_IN_CSM = "xr.cfg"
-BREAKOUT_CONFIG_IN_CSM = "breakout.cfg"
+# BREAKOUT_CONFIG_IN_CSM = "breakout.cfg"
 ADMIN_CONFIG_IN_CSM = "admin.cfg"
 
 CONVERTED_XR_CONFIG_IN_CSM = "xr.iox"
 CONVERTED_ADMIN_CAL_CONFIG_IN_CSM = "admin.cal"
 CONVERTED_ADMIN_XR_CONFIG_IN_CSM = "admin.iox"
 
-XR_CONFIG_ON_DEVICE = "iosxr.cfg"
-ADMIN_CAL_CONFIG_ON_DEVICE = "admin_calvados.cfg"
-ADMIN_XR_CONFIG_ON_DEVICE = "admin_iosxr.cfg"
+FINAL_CAL_CONFIG = "cXR_admin_plane_converted_eXR.cfg"
+FINAL_XR_CONFIG = "cXR_xr_plane_converted_eXR.cfg"
 
-VALID_STATE = ['IOS XR RUN',
-               'PRESENT',
-               'READY',
-               'OK']
+# XR_CONFIG_ON_DEVICE = "iosxr.cfg"
+# ADMIN_CAL_CONFIG_ON_DEVICE = "admin_calvados.cfg"
+# ADMIN_XR_CONFIG_ON_DEVICE = "admin_iosxr.cfg"
 
 
 class Plugin(CSMPlugin):
@@ -767,7 +765,7 @@ class Plugin(CSMPlugin):
 
     def _handle_configs(self, hostname, server, repo_url, fileloc, nox_to_use, config_filename):
         """
-        1. Copy admin and XR configs from device to tftp server repository.
+        1. Copy admin and XR configs from device to TFTP/FTP/SFTP server repository.
         2. Copy admin and XR configs from server repository to csm_data/migration/<hostname>/
         3. Copy admin and XR configs from server repository to session log directory as
            show-running-config.txt and admin-show-running-config.txt for comparisons
@@ -776,12 +774,15 @@ class Plugin(CSMPlugin):
            and POSSIBLY 2) eXR XR config.
         5. Run NoX on XR config if no custom eXR config has been selected by user when
            Pre-Migrate is scheduled. This run generates eXR XR config.
-        6. Copy all converted configs to the server repository and then from there to device.
+        6. Merge either the selected eXR custom config or the converted XR config with the converted
+           eXR XR config to form a new file - cXR_xr_plane_converted_eXR.cfg
+        7. Copy the eXR admin/calvados config and the cXR_xr_plane_converted_eXR.cfg to the server
+           repository and then from there to device.
            Note if user selected custom eXR XR config, that will be uploaded instead of
            the NoX migrated original XR config.
 
         :param hostname: string hostname of device, as recorded on CSM.
-        :param repo_url: the URL of the selected TFTP server repository. i.e., tftp://223.255.254.245/tftpboot
+        :param repo_url: the URL of the selected server repository. i.e., tftp://223.255.254.245/tftpboot
         :param fileloc: the string path ../../csm_data/migration/<hostname>
         :param nox_to_use: the name of the NoX binary executable
         :param config_filename: the user selected string filename of custom eXR XR config.
@@ -805,24 +806,39 @@ class Plugin(CSMPlugin):
         log_and_post_status(self.ctx, "Converting admin configuration file with configuration migration tool")
         self._run_migration_on_config(fileloc, ADMIN_CONFIG_IN_CSM, nox_to_use, hostname)
 
+        # "admin.cal"
+        if not os.path.isfile(os.path.join(fileloc, CONVERTED_ADMIN_CAL_CONFIG_IN_CSM)):
+            self.ctx.error("Missing {} after configuration conversion.".format(
+                os.path.join(fileloc, CONVERTED_ADMIN_CAL_CONFIG_IN_CSM)))
         # ["admin.cal"]
         config_files = [CONVERTED_ADMIN_CAL_CONFIG_IN_CSM]
-        # ["admin_calvados.cfg"]
-        config_names_on_device = [ADMIN_CAL_CONFIG_ON_DEVICE]
+        # ["cXR_admin_plane_converted_eXR.cfg"]
+        config_names_on_device = [FINAL_CAL_CONFIG]
         if not config_filename:
 
             log_and_post_status(self.ctx, "Converting IOS-XR configuration file with configuration migration tool")
             self._run_migration_on_config(fileloc, XR_CONFIG_IN_CSM, nox_to_use, hostname)
 
-            # "xr.iox"
-            config_files.append(CONVERTED_XR_CONFIG_IN_CSM)
-            # "iosxr.cfg"
-            config_names_on_device.append(XR_CONFIG_ON_DEVICE)
+            if not os.path.isfile(os.path.join(fileloc, CONVERTED_ADMIN_XR_CONFIG_IN_CSM)):
+                self.ctx.error("Missing {} after configuration conversion.".format(
+                    os.path.join(fileloc, CONVERTED_ADMIN_XR_CONFIG_IN_CSM)))
+            if not os.path.isfile(os.path.join(fileloc, CONVERTED_XR_CONFIG_IN_CSM)):
+                self.ctx.error("Missing {} after configuration conversion.".format(
+                    os.path.join(fileloc, CONVERTED_XR_CONFIG_IN_CSM)))
+            # admin.iox and xr.iox
+            files_to_merge = [os.path.join(fileloc, CONVERTED_ADMIN_XR_CONFIG_IN_CSM),
+                              os.path.join(fileloc, CONVERTED_XR_CONFIG_IN_CSM)]
 
-        # admin.iox
-        if os.path.isfile(os.path.join(fileloc, CONVERTED_ADMIN_XR_CONFIG_IN_CSM)):
-            config_files.append(CONVERTED_ADMIN_XR_CONFIG_IN_CSM)
-            config_names_on_device.append(ADMIN_XR_CONFIG_ON_DEVICE)
+            with open(os.path.join(fileloc, FINAL_XR_CONFIG), 'w') as merged_file:
+                for fname in files_to_merge:
+                    with open(fname) as infile:
+                        for line in infile:
+                            merged_file.write(line)
+
+            # "cXR_xr_plane_converted_eXR.cfg" - product of files_to_merge, merging will be done
+            config_files.append(FINAL_XR_CONFIG)
+            # "cXR_xr_plane_converted_eXR.cfg"
+            config_names_on_device.append(FINAL_XR_CONFIG)
 
         log_and_post_status(self.ctx, "Uploading the migrated configuration files to server repository and device.")
 
@@ -834,8 +850,8 @@ class Plugin(CSMPlugin):
 
             if config_filename:
                 config_names_in_repo.append(config_filename)
-                # iosxr.cfg
-                config_names_on_device.append(XR_CONFIG_ON_DEVICE)
+                # "cXR_xr_plane_converted_eXR.cfg"
+                config_names_on_device.append(FINAL_XR_CONFIG)
 
             self._copy_files_to_device(server, repo_url, config_names_in_repo,
                                        [CONFIG_LOCATION + config_name
@@ -919,14 +935,12 @@ class Plugin(CSMPlugin):
             os.makedirs(fileloc)
 
         self.ctx.save_data('hardware_audit_software_version', exr_version)
+        # this is necessary because override_hw_req data field is used for frontend too,
+        # hardware_audit will need to reset this new data field hardware_audit_override_hw_req
+        # every time so as to not take an older value and also not affect the frontend.
         self.ctx.save_data('hardware_audit_override_hw_req', override_hw_req)
         hardware_audit_plugin = HardwareAuditPlugin(self.ctx)
         hardware_audit_plugin.run()
-
-        # reset the values so that the hardware audit will not assume that the request
-        # came from Pre-Migrate the next time hardware audit runs.
-        self.ctx.save_data('hardware_audit_software_version', '')
-        self.ctx.save_data('hardware_audit_override_hw_req', '')
 
         fpd_relevant_nodes = None
         if self.ctx.load_data('fpd_relevant_nodes'):
