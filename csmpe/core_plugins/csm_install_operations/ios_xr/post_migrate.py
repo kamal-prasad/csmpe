@@ -73,7 +73,9 @@ class Plugin(CSMPlugin):
                 self.ctx.send("exit")
                 return False
 
-        self.ctx.send("cp /eusbb/backup_config/{0} /harddisk:/{0}".format(filename), wait_for_string="\]\$")
+        self.ctx.send("cp /eusbb/backup_config/{0} /harddisk:/{0}".format(filename),
+                      timeout=300,
+                      wait_for_string="\]\$")
 
         self.ctx.send("exit")
 
@@ -113,14 +115,14 @@ class Plugin(CSMPlugin):
         """Load the admin/calvados configuration."""
         self.ctx.send("config", wait_for_string="#")
 
-        output = self.ctx.send("load merge {}".format(filename), wait_for_string="#")
+        output = self.ctx.send("load merge {}".format(filename), timeout=600, wait_for_string="#")
 
         if "Error" in output or "failed" in output:
             self._quit_config()
             self.ctx.send("exit")
             self.ctx.error("Aborted committing admin Calvados configuration. Please check session.log for errors.")
         else:
-            output = self.ctx.send("commit", wait_for_string="#")
+            output = self.ctx.send("commit", timeout=600, wait_for_string="#")
             if "failure" in output:
                 self._quit_config()
                 self.ctx.send("exit")
@@ -131,12 +133,12 @@ class Plugin(CSMPlugin):
         """Load the XR configuration."""
         self.ctx.send("config")
 
-        output = self.ctx.send("load harddisk:/{}".format(filename))
+        output = self.ctx.send("load harddisk:/{}".format(filename), timeout=600)
 
         if "error" in output or "failed" in output:
             return self._handle_failed_commit(output, commit_with_best_effort, filename)
 
-        output = self.ctx.send("commit")
+        output = self.ctx.send("commit", timeout=600)
         if "Failed" in output:
             return self._handle_failed_commit(output, commit_with_best_effort, filename)
 
