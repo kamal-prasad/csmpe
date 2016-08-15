@@ -109,6 +109,9 @@ class Plugin(CSMPlugin):
         if 'tar' in s_packages:
             has_tar = True
 
+        if not s_packages:
+            self.ctx.error("None of the selected package(s) has an acceptable file extension.")
+
         self.ctx.info("Add Package(s) Pending")
         self.ctx.post_status("Add Package(s) Pending")
 

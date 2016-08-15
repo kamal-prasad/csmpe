@@ -653,7 +653,7 @@ class Plugin(CSMPlugin):
             events = [PROMPT, CONFIRM_CONTINUE, CONFIRM_SECOND_TIME, UPGRADE_END, TIMEOUT]
             transitions = [
                 (CONFIRM_CONTINUE, [0], 1, send_newline, TIMEOUT_FOR_FPD_UPGRADE),
-                (CONFIRM_SECOND_TIME, [1], 2, send_yes, TIMEOUT_FOR_FPD_UPGRADE),
+                (CONFIRM_SECOND_TIME, [0, 1], 2, send_yes, TIMEOUT_FOR_FPD_UPGRADE),
                 (UPGRADE_END, [1, 2], 3, None, 120),
                 (PROMPT, [3], -1, None, 0),
                 (PROMPT, [1, 2], -1, error, 0),
