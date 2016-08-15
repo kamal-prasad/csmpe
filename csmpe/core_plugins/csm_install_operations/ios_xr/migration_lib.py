@@ -127,11 +127,26 @@ def wait_for_final_band(ctx):
         time.sleep(poll_time)
         output = ctx.send(cmd)
         all_nodes_present = True
-        for node in supported_nodes:
-            if node not in output:
-                all_nodes_present = False
-                break
-        if all_nodes_present and check_sw_status(output):
+
+        entries_in_show_plat_vm = []
+        lines = output.splitlines()
+        for line in lines:
+            line = line.strip()
+            if len(line) > 0 and line[0].isdigit():
+                entries_in_show_plat_vm.append(line)
+        if len(entries_in_show_plat_vm) < len(supported_nodes):
+            all_nodes_present = False
+        else:
+            for node in supported_nodes:
+                node_in = False
+                for entry in entries_in_show_plat_vm:
+                    if node in entry:
+                        node_in = True
+                        break
+                if not node_in:
+                    all_nodes_present = False
+                    break
+        if all_nodes_present and check_sw_status(entries_in_show_plat_vm):
             return True
         """
         if check_sw_status_admin(supported_nodes, output):
@@ -142,16 +157,13 @@ def wait_for_final_band(ctx):
     return False
 
 
-def check_sw_status(output):
+def check_sw_status(entries_in_show_plat_vm):
     """Check if a node has FINAL Band status"""
-    lines = output.splitlines()
 
-    for line in lines:
-        line = line.strip()
-        if len(line) > 0 and line[0].isdigit():
-            sw_status = line[48:64].strip()
-            if "FINAL Band" not in sw_status:
-                return False
+    for line in entries_in_show_plat_vm:
+        sw_status = line[48:64].strip()
+        if "FINAL Band" not in sw_status:
+            return False
     return True
 
 
