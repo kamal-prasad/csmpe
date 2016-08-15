@@ -57,6 +57,9 @@ class Plugin(CSMPlugin):
         if 'tar' in s_packages:
             has_tar = True
 
+        if not s_packages:
+            self.ctx.error("None of the selected package(s) has an acceptable file extension.")
+
         cmd = "admin install add source {} {} async".format(server_repository_url, s_packages)
 
         self.ctx.info("Add Package(s) Pending")

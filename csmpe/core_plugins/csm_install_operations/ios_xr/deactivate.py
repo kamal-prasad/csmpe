@@ -64,6 +64,11 @@ class Plugin(CSMPlugin):
                 self.ctx.error('To be deactivated packages not in inactive packages list.')
                 return None
             else:
+                if len(packages_to_deactivate) != len(packages):
+                    self.ctx.info('Packages selected for deactivation: {}\n'.format(" ".join(map(str, packages))) +
+                                  'Packages that can be deactivated: {}'.format(" ".join(map(str,
+                                                                                             packages_to_deactivate))))
+                    self.ctx.error('Some selected packages cannot be deactivated.')
                 return " ".join(map(str, packages_to_deactivate))
 
     def run(self):
