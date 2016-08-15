@@ -126,28 +126,9 @@ def wait_for_final_band(ctx):
             break
         time.sleep(poll_time)
         output = ctx.send(cmd)
-        all_nodes_present = True
-
-        entries_in_show_plat_vm = []
-        lines = output.splitlines()
-        for line in lines:
-            line = line.strip()
-            if len(line) > 0 and line[0].isdigit():
-                entries_in_show_plat_vm.append(line)
-        if len(entries_in_show_plat_vm) < len(supported_nodes):
-            all_nodes_present = False
-        else:
-            for node in supported_nodes:
-                node_in = False
-                for entry in entries_in_show_plat_vm:
-                    if node in entry:
-                        node_in = True
-                        break
-                if not node_in:
-                    all_nodes_present = False
-                    break
-        if all_nodes_present and check_sw_status(entries_in_show_plat_vm):
+        if check_show_plat_vm(output, supported_nodes):
             return True
+
         """
         if check_sw_status_admin(supported_nodes, output):
             ctx.send("exit")
@@ -157,14 +138,31 @@ def wait_for_final_band(ctx):
     return False
 
 
-def check_sw_status(entries_in_show_plat_vm):
-    """Check if a node has FINAL Band status"""
+def check_show_plat_vm(output, supported_nodes):
+    """Check if all supported nodes reached FINAL Band status"""
 
-    for line in entries_in_show_plat_vm:
-        sw_status = line[48:64].strip()
-        if "FINAL Band" not in sw_status:
-            return False
-    return True
+    all_nodes_ready = True
+    entries_in_show_plat_vm = []
+    lines = output.splitlines()
+    for line in lines:
+        line = line.strip()
+        if len(line) > 0 and line[0].isdigit():
+            entries_in_show_plat_vm.append(line)
+
+    if len(entries_in_show_plat_vm) < len(supported_nodes):
+        all_nodes_ready = False
+    else:
+        for node in supported_nodes:
+            node_is_ready = False
+            for entry in entries_in_show_plat_vm:
+                if node in entry:
+                    if 'FINAL Band' in entry:
+                        node_is_ready = True
+                    break
+            if not node_is_ready:
+                all_nodes_ready = False
+                break
+    return all_nodes_ready
 
 
 def check_sw_status_admin(supported_nodes, output):
