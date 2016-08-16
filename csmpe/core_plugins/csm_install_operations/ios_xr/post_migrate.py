@@ -29,12 +29,11 @@ import re
 import time
 
 from csmpe.plugins import CSMPlugin
-from condoor.exceptions import CommandSyntaxError
 from csmpe.context import PluginError
 from migration_lib import wait_for_final_band, log_and_post_status
 from csmpe.core_plugins.csm_custom_commands_capture.plugin import Plugin as CmdCapturePlugin
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
-from pre_migrate import FINAL_XR_CONFIG, FINAL_CAL_CONFIG
+from pre_migrate import FINAL_CAL_CONFIG
 
 TIMEOUT_FOR_COPY_CONFIG = 3600
 
@@ -51,14 +50,11 @@ class Plugin(CSMPlugin):
     platforms = {'ASR9K'}
     phases = {'Post-Migrate'}
 
-    def _copy_file_from_eusb_to_harddisk(self, filename, optional=False):
+    def _copy_file_from_eusb_to_harddisk(self, filename):
         """
         Copy file from eUSB partition(/eusbb/backup_config/ in eXR) to /harddisk:.
 
         :param filename: the string name of the file you want to copy from /eusbb/backup_config/
-        :param optional: boolean value. If set to True, it's okay if the given filename
-                         is not found in /eusbb/backup_config/. If False, error out if the given filename
-                         is missing from /eusbb/backup_config/.
         :return: True if no error occurred.
         """
 
@@ -67,11 +63,7 @@ class Plugin(CSMPlugin):
         output = self.ctx.send("ls /eusbb/backup_config/{}".format(filename), wait_for_string="\]\$")
 
         if "No such file" in output:
-            if not optional:
-                self.ctx.error("{} is missing in /eusbb/backup_config/ on device after migration.".format(filename))
-            else:
-                self.ctx.send("exit")
-                return False
+            self.ctx.error("{} is missing in /eusbb/backup_config/ on device after migration.".format(filename))
 
         self.ctx.send("cp /eusbb/backup_config/{0} /harddisk:/{0}".format(filename),
                       timeout=300,
@@ -129,72 +121,6 @@ class Plugin(CSMPlugin):
                 self.ctx.error("Failure to commit admin configuration. Please check session.log.")
             self.ctx.send("end")
 
-    def _load_nonadmin_config(self, filename, commit_with_best_effort):
-        """Load the XR configuration."""
-        self.ctx.send("config")
-
-        output = self.ctx.send("load harddisk:/{}".format(filename), timeout=600)
-
-        if "error" in output or "failed" in output:
-            return self._handle_failed_commit(output, commit_with_best_effort, filename)
-
-        output = self.ctx.send("commit", timeout=600)
-        if "Failed" in output:
-            return self._handle_failed_commit(output, commit_with_best_effort, filename)
-
-        if "No configuration changes to commit" in output:
-            log_and_post_status(self.ctx, "No configuration changes in /eusbb/backup_config/{}".format(filename) +
-                                " were committed. Please check session.log.")
-        if "Abort" in output:
-            self._quit_config()
-            self.ctx.error("Failure to commit configuration. Please check session.log for errors.")
-        self.ctx.send("end")
-        return True
-
-    def _handle_failed_commit(self, output, commit_with_best_effort, filename):
-        """
-        Display which line of config failed to load for which reason.
-        If when scheduling Post-Migrate, user chooses to commit the migrated or
-        self-selected custom XR config with best effort, we will commit the
-        configs with best effort upon failure to load some configs, else, the loading
-        will be aborted upon failure with some configs, the process errors out.
-
-        :param output: output after CLI "commit"
-        :param commit_with_best_effort: 1 or -1. 1 for commiting with best effort.
-                                        -1 for aborting commit upon error.
-        :param filename: the string config filename in /eusbb/backup_config/ that we are
-                         trying to commit
-        :return: True if no error occurred.
-        """
-        cmd = ""
-        if "show configuration failed load [detail]" in output:
-            cmd = "show configuration failed load detail"
-        elif "show configuration failed [inheritance]" in output:
-            cmd = "show configuration failed inheritance"
-
-        if cmd:
-            try:
-                self.ctx.send(cmd)
-            except CommandSyntaxError:
-                pass
-
-        if commit_with_best_effort == -1:
-            self._quit_config()
-
-            self.ctx.error("Errors when loading configuration. Please check session.log.")
-
-        elif commit_with_best_effort == 1:
-            output = self.ctx.send("commit best-effort force")
-            log_and_post_status(self.ctx,
-                                "Committed configurations with best-effort. Please check session.log for result.")
-            if "No configuration changes to commit" in output:
-                log_and_post_status(self.ctx,
-                                    "No configuration changes in /eusbb/backup_config/{}".format(filename) +
-                                    " were committed. Please check session.log for errors.")
-            self.ctx.send("end")
-
-        return True
-
     def _check_fpds_for_upgrade(self):
         """Check if any FPD's need upgrade, if so, upgrade all FPD's on all locations."""
 
@@ -226,7 +152,7 @@ class Plugin(CSMPlugin):
         :return: True if upgraded successfully and reloaded(if necessary).
                  False if some FPD's did not upgrade successfully in 9600 seconds.
         """
-
+        log_and_post_status(self.ctx, "Upgrading all FPD's.")
         self.ctx.send("upgrade hw-module location all fpd all")
 
         timeout = 9600
@@ -273,17 +199,20 @@ class Plugin(CSMPlugin):
         return True
 
     def run(self):
-        best_effort_config = None
-        if self.ctx.load_data('best_effort_config_applying'):
-            best_effort_config = self.ctx.load_data('best_effort_config_applying')[0]
-        if not best_effort_config:
-            self.ctx.error("No configuration handling option selected when scheduling post-migrate.")
 
         log_and_post_status(self.ctx, "Waiting for all nodes to come to FINAL Band.")
         if not wait_for_final_band(self.ctx):
-            log_and_post_status(self.ctx, "Warning: Not all nodes are in FINAL Band after 20 minutes.")
+            log_and_post_status(self.ctx, "Warning: Not all nodes are in FINAL Band after 25 minutes.")
 
-        log_and_post_status(self.ctx, "Loading the migrated Calvados configuration first.")
+        try:
+            self.ctx.custom_commands = ["show running-config"]
+            cmd_capture_plugin = CmdCapturePlugin(self.ctx)
+            cmd_capture_plugin.run()
+        except PluginError as e:
+            log_and_post_status(self.ctx,
+                                "Failed to capture 'show running-config' - ({}): {}".format(e.errno, e.strerror))
+
+        log_and_post_status(self.ctx, "Loading the migrated Calvados configuration.")
         self.ctx.send("admin")
         self._copy_file_from_eusb_to_harddisk(FINAL_CAL_CONFIG)
         self._load_admin_config(FINAL_CAL_CONFIG)
@@ -304,19 +233,6 @@ class Plugin(CSMPlugin):
             log_and_post_status(self.ctx, str(type(e)) + " when trying to capture 'admin show running-config'.")
 
         self.ctx.send("exit")
-        """
-        log_and_post_status(self.ctx, "Loading the IOS-XR configuration on device.")
-        file_exists = self._copy_file_from_eusb_to_harddisk(FINAL_XR_CONFIG)
-        if file_exists:
-            self._load_nonadmin_config(FINAL_XR_CONFIG, best_effort_config)
-        """
-        try:
-            self.ctx.custom_commands = ["show running-config"]
-            cmd_capture_plugin = CmdCapturePlugin(self.ctx)
-            cmd_capture_plugin.run()
-        except PluginError as e:
-            log_and_post_status(self.ctx,
-                                "Failed to capture 'show running-config' - ({}): {}".format(e.errno, e.strerror))
 
         self._check_fpds_for_upgrade()
 

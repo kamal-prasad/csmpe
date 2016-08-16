@@ -183,7 +183,7 @@ class Plugin(CSMPlugin):
         if wait_for_final_band(self.ctx):
             log_and_post_status(self.ctx, "All nodes are in FINAL Band.")
         else:
-            log_and_post_status(self.ctx, "Warning: Not all nodes went to FINAL Band.")
+            log_and_post_status(self.ctx, "Warning: Not all nodes are in FINAL Band after 25 minutes.")
 
         return True
 
