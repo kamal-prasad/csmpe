@@ -107,25 +107,35 @@ def watch_operation(ctx, op_id=0):
 
     last_status = None
     finish = False
+    time_tried = 0
     while not finish:
         try:
-            # this is to catch the successful operation as soon as possible
-            ctx.send("", wait_for_string=success, timeout=20)
-            finish = True
-        except ctx.CommandTimeoutError:
-            pass
+            try:
+                # this is to catch the successful operation as soon as possible
+                ctx.send("", wait_for_string=success, timeout=20)
+                finish = True
+            except ctx.CommandTimeoutError:
+                pass
 
-        message = ""
-        output = ctx.send(cmd_show_install_request)
-        if op_id in output:
-            result = re.search(op_progress, output)
-            if result:
-                status = result.group(0)
-                message = "{}".format(status)
+            message = ""
+            output = ctx.send(cmd_show_install_request, timeout=300)
+            if op_id in output:
+                result = re.search(op_progress, output)
+                if result:
+                    status = result.group(0)
+                    message = "{}".format(status)
 
-            if message != last_status:
-                ctx.post_status(message)
-                last_status = message
+                if message != last_status:
+                    ctx.post_status(message)
+                    last_status = message
+        except ctx.CommandTimeoutError as e:
+            if time_tried > 2:
+                raise e
+
+            time_tried += 1
+            ctx.disconnect()
+            time.sleep(60)
+            ctx.reconnect()
 
         if no_install in output:
             break
