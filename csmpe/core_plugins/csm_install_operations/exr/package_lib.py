@@ -34,10 +34,10 @@ ncs6k-doc.pkg-5.2.4                           ncs6k-doc-5.2.4
 ncs6k-li.pkg-5.2.4                            ncs6k-li-5.2.4
 ncs6k-mcast.pkg-5.2.4                         ncs6k-mcast-5.2.4
 ncs6k-mgbl.pkg-5.2.4                          ncs6k-mgbl-5.2.4
-ncs6k-mini-x.iso-5.2.4                        ncs6k-xr-5.2.4
+ncs6k-mini-x.iso-5.2.4                        ncs6k-mini-x-5.2.4
 ncs6k-mpls.pkg-5.2.4                          ncs6k-mpls-5.2.4
 ncs6k-sysadmin.iso-5.2.4                      ncs6k-sysadmin-5.2.4
-ncs6k-full-x.iso-5.2.4                        ncs6k-xr-5.2.4
+ncs6k-full-x.iso-5.2.4                        ncs6k-full-x-5.2.4
 ncs6k-5.2.5.CSCuy47880.smu                    ncs6k-5.2.5.CSCuy47880-1.0.0  <- subversion added
 
 Engineering Packages
@@ -64,8 +64,8 @@ External Names                                                          Internal
 asr9k-mcast-x64-2.0.0.0-r61116I.x86_64.rpm-6.1.1.16I.DT_IMAGE           asr9k-mcast-x64-2.0.0.0-r61116I
 asr9k-bgp-x64-1.0.0.0-r61116I.x86_64.rpm-6.1.1.16I.DT_IMAGE             asr9k-bgp-x64-1.0.0.0-r61116I
 asr9k-mgbl-x64-3.0.0.0-r61116I.x86_64.rpm-6.1.1.16I.DT_IMAGE            asr9k-mgbl-x64-3.0.0.0-r61116I
-asr9k-full-x64.iso-6.1.1.16I.DT_IMAGE                                   asr9k-xr-6.1.1.16I
-asr9k-mini-x64.iso-6.1.1.16I.DT_IMAGE                                   asr9k-xr-6.1.1.16I
+asr9k-full-x64.iso-6.1.1.16I.DT_IMAGE                                   asr9k-full-x64-6.1.1.16I
+asr9k-mini-x64.iso-6.1.1.16I.DT_IMAGE                                   asr9k-mini-x64-6.1.1.16I
 
 NCS5K
 
@@ -148,23 +148,30 @@ class SoftwarePackage(object):
     @property
     def package_type(self):
         if not self._package_type:
+            # For ASR9K-X64, NCS1K, NCS5K, NCS5500:
+            #     Extract the package type string before X.X.X.X
+            # For NCS6K
+            #     Extract the package type string before X.X.X
             pattern = '-\d+\.\d+\.\d+' if self.platform == 'ncs6k' else '-\d\.\d\.\d.\d'
 
-            if self.platform and self.platform in self.package_name and 'CSC' not in self.package_name:
-                exceptions = ['full', 'mini', 'sysadmin', 'xr']
-                for exception in exceptions:
-                    if exception in self.package_name:
-                        self._package_type = exception
-                        break
+            if self.platform and self.platform in self.package_name:
+                match = re.search(pattern, self.package_name)
 
-                if not self._package_type:
-                    match = re.search(pattern, self.package_name)
-                    if match:
-                        self._package_type = self.package_name[0:match.start()].replace(self.platform + '-', '')
+                # Special handling for mini, full, and sysadmin ISO on ASR9K-X64, NCS1K, NCS5K, NCS5500
+                # Example: ncs5500-mini-x.iso-6.0.1, asr9k-full-x64.iso-6.1.1
+                # Package type string is before the 3 part version string
+                if not match and sum([x in self.package_name for x in ['full', 'mini', 'sysadmin']]) > 0:
+                    # Use the three part match for these ISO packages
+                    match = re.search('-\d+\.\d+\.\d+', self.package_name)
 
-                if self.platform == 'ncs6k' and self._package_type:
-                    # For external name (e.g. ncs6k-mgbl.pkg-5.2.5), need to further refine the name.
-                    self._package_type = self._package_type.replace('.pkg', '')
+                if match:
+                    # Extract the package type
+                    self._package_type = self.package_name[0:match.start()].replace(self.platform + '-', '')
+
+                if self._package_type:
+                    # Takes care the external to internal name matching
+                    # Example, ncs6k-mgbl.pkg-5.2.5 -> mgbl, ncs5500-mini-x.iso-6.0.1 -> mini-x
+                    self._package_type = self._package_type.replace('.pkg', '').replace('.iso', '')
 
         return self._package_type
 
@@ -240,6 +247,11 @@ class SoftwarePackage(object):
         for pkg in pkg_list:
             software_package = SoftwarePackage(pkg)
             if software_package.is_valid():
+                """ for debugging
+                print('platform', software_package.platform, 'package_type', software_package.package_type,
+                      'version', software_package.version, 'smu', software_package.smu,
+                      'subversion', software_package.subversion)
+                """
                 software_packages.add(software_package)
         return software_packages
 
