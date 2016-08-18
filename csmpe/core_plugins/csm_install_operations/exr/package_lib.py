@@ -111,8 +111,8 @@ platforms = ['asr9k', 'ncs1k', 'ncs5k', 'ncs5500', 'ncs6k']
 
 
 version_dict = {"asr9k ncs1k ncs5k ncs5500":  # 61117I or 611 or 6.1.1.17I or 6.1.1
-                re.compile("(?P<VERSION>(\d+\d+\d+(\d+\w+)?)|(\d+\.\d+\.\d+(\.\d+\w+)?)(?!\.\d)(?!-))"),
-                "ncs6k":                         # 5.2.4 or 5.2.4.47I
+                re.compile("(?P<VERSION>(\d+\d+\d+(\d+\w+)?)|(\d+\.\d+\.\d+(\.\d+\w+)?))"),
+                "ncs6k":                      # 5.2.4 or 5.2.4.47I
                 re.compile("(?P<VERSION>\d+\.\d+\.\d+(\.\d+\w+)?)"),
                 }
 
@@ -180,7 +180,8 @@ class SoftwarePackage(object):
         if not self._version:
             dict_values = self.get_values(version_dict, self.platform)
             if self.platform and dict_values:
-                result = re.search(dict_values, self.package_name)
+                to_match = self.package_name.replace(self.platform, '')
+                result = re.search(dict_values, to_match)
                 if result:
                     self._version = result.group("VERSION")
 
@@ -202,7 +203,8 @@ class SoftwarePackage(object):
             if self.platform and dict_values:
                 # For NCS6K, only need to consider subversion if it is a SMU.
                 if self.platform in ["asr9k", "ncs1k", "ncs5k", "ncs5500"] or self.smu:
-                    result = re.search(dict_values, self.package_name)
+                    to_match = self.package_name.replace(self.platform, '')
+                    result = re.search(dict_values, to_match)
                     if result:
                         self._subversion = result.group("SUBVERSION")
 
@@ -248,7 +250,8 @@ class SoftwarePackage(object):
             software_package = SoftwarePackage(pkg)
             if software_package.is_valid():
                 """ for debugging
-                print('platform', software_package.platform, 'package_type', software_package.package_type,
+                print('package_name', software_package.package_name,
+                      'platform', software_package.platform, 'package_type', software_package.package_type,
                       'version', software_package.version, 'smu', software_package.smu,
                       'subversion', software_package.subversion)
                 """
