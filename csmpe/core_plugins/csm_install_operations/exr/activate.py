@@ -91,9 +91,8 @@ class Plugin(CSMPlugin):
             else:
                 if len(packages_to_activate) != len(packages):
                     self.ctx.info('Packages selected for activation: {}\n'.format(" ".join(map(str, packages))) +
-                                  'Packages that can be activated: {}'.format(" ".join(map(str,
-                                                                                           packages_to_activate))))
-                    self.ctx.error('Some selected packages cannot be activated.')
+                                  'Packages that are to be activated: {}'.format(" ".join(map(str,
+                                                                                              packages_to_activate))))
                 return " ".join(map(str, packages_to_activate))
 
     def run(self):
@@ -130,3 +129,4 @@ class Plugin(CSMPlugin):
         get_package(self.ctx)
 
         update_device_info_udi(self.ctx)
+

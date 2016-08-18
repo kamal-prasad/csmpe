@@ -66,9 +66,8 @@ class Plugin(CSMPlugin):
             else:
                 if len(packages_to_deactivate) != len(packages):
                     self.ctx.info('Packages selected for deactivation: {}\n'.format(" ".join(map(str, packages))) +
-                                  'Packages that can be deactivated: {}'.format(" ".join(map(str,
-                                                                                             packages_to_deactivate))))
-                    self.ctx.error('Some selected packages cannot be deactivated.')
+                                  'Packages that are to be deactivated: {}'.format(" ".join(map(str,
+                                                                                            packages_to_deactivate))))
                 return " ".join(map(str, packages_to_deactivate))
 
     def run(self):
