@@ -27,7 +27,7 @@
 # =============================================================================
 
 from csmpe.plugins import CSMPlugin
-
+from condoor.exceptions import CommandSyntaxError
 
 class Plugin(CSMPlugin):
     """This plugin captures custom commands and stores in the log directory."""
@@ -40,11 +40,14 @@ class Plugin(CSMPlugin):
         if command_list:
             for cmd in command_list:
                 self.ctx.info("Capturing output of '{}'".format(cmd))
-                output = self.ctx.send(cmd, timeout=2200)
-                file_name = self.ctx.save_to_file(cmd, output)
-                if file_name is None:
-                    self.ctx.error("Unable to save '{}' output to file: {}".format(cmd, file_name))
-                    return False
+                try:
+                    output = self.ctx.send(cmd, timeout=2200)
+                    file_name = self.ctx.save_to_file(cmd, output)
+                    if file_name is None:
+                        self.ctx.error("Unable to save '{}' output to file: {}".format(cmd, file_name))
+                        return False
+                except CommandSyntaxError:
+                    self.ctx.error("Command Syntax Error: '" + cmd + "'")
 
         else:
             self.ctx.info("No custom commands provided.")
