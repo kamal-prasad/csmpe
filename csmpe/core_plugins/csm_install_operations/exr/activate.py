@@ -129,4 +129,3 @@ class Plugin(CSMPlugin):
         get_package(self.ctx)
 
         update_device_info_udi(self.ctx)
-

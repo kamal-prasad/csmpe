@@ -29,6 +29,7 @@
 from csmpe.plugins import CSMPlugin
 from condoor.exceptions import CommandSyntaxError
 
+
 class Plugin(CSMPlugin):
     """This plugin captures custom commands and stores in the log directory."""
     name = "Custom Commands Capture Plugin"
