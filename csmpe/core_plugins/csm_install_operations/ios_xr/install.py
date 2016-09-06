@@ -87,7 +87,7 @@ def watch_operation(ctx, op_id=0):
                 if message != last_status:
                     ctx.post_status(message)
                     last_status = message
-        except ctx.CommandTimeoutError as e:
+        except (ctx.ConnectionError, ctx.CommandTimeoutError) as e:
             if time_tried > 2:
                 raise e
 
