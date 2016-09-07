@@ -805,7 +805,7 @@ class Plugin(CSMPlugin):
         log_and_post_status(self.ctx, "Cleaning up previously saved configuration files for this host in csm_data")
         for old_file in os.listdir(fileloc):
             try:
-                os.remove(old_file)
+                os.remove(os.path.join(fileloc, old_file))
             except:
                 self.ctx.warning("Failed to remove the old configuration conversion file " +
                                  "{}".format(os.path.join(fileloc, old_file)))
