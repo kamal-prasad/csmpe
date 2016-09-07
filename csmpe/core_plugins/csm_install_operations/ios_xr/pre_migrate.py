@@ -802,6 +802,15 @@ class Plugin(CSMPlugin):
         :return: None if no error occurred.
         """
 
+        log_and_post_status(self.ctx, "Cleaning up previously saved configuration files for this host in csm_data")
+        for old_file in os.listdir(fileloc):
+            try:
+                os.remove(old_file)
+            except:
+                self.ctx.warning("Failed to remove the old configuration conversion file " +
+                                 "{}".format(os.path.join(fileloc, old_file)))
+                pass
+
         log_and_post_status(self.ctx, "Saving the current configurations on device into server repository and csm_data")
 
         self._save_config_to_csm_data([os.path.join(fileloc, ADMIN_CONFIG_IN_CSM),
