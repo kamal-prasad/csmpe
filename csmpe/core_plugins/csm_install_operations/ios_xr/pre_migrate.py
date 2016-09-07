@@ -155,10 +155,10 @@ class Plugin(CSMPlugin):
         if server_type == ServerType.TFTP_SERVER:
             tftp_server = TFTPServer(server)
             for x in range(0, len(sourcefiles)):
-                log_and_post_status(self.ctx, "Coping file {} to {}/{}/{}.".format(sourcefiles[x],
-                                                                                   server.server_directory,
-                                                                                   selected_server_directory,
-                                                                                   destfilenames[x]))
+                log_and_post_status(self.ctx, "Copying file {} to {}/{}/{}.".format(sourcefiles[x],
+                                                                                    server.server_directory,
+                                                                                    selected_server_directory,
+                                                                                    destfilenames[x]))
                 try:
                     tftp_server.upload_file(sourcefiles[x], destfilenames[x],
                                             sub_directory=selected_server_directory)
@@ -172,10 +172,10 @@ class Plugin(CSMPlugin):
         elif server_type == ServerType.FTP_SERVER:
             ftp_server = FTPServer(server)
             for x in range(0, len(sourcefiles)):
-                log_and_post_status(self.ctx, "Coping file {} to {}/{}/{}.".format(sourcefiles[x],
-                                                                                   server.server_directory,
-                                                                                   selected_server_directory,
-                                                                                   destfilenames[x]))
+                log_and_post_status(self.ctx, "Copying file {} to {}/{}/{}.".format(sourcefiles[x],
+                                                                                    server.server_directory,
+                                                                                    selected_server_directory,
+                                                                                    destfilenames[x]))
                 try:
                     ftp_server.upload_file(sourcefiles[x], destfilenames[x],
                                            sub_directory=selected_server_directory)
@@ -188,10 +188,10 @@ class Plugin(CSMPlugin):
         elif server_type == ServerType.SFTP_SERVER:
             sftp_server = SFTPServer(server)
             for x in range(0, len(sourcefiles)):
-                log_and_post_status(self.ctx, "Coping file {} to {}/{}/{}.".format(sourcefiles[x],
-                                                                                   server.server_directory,
-                                                                                   selected_server_directory,
-                                                                                   destfilenames[x]))
+                log_and_post_status(self.ctx, "Copying file {} to {}/{}/{}.".format(sourcefiles[x],
+                                                                                    server.server_directory,
+                                                                                    selected_server_directory,
+                                                                                    destfilenames[x]))
                 try:
                     sftp_server.upload_file(sourcefiles[x], destfilenames[x],
                                             sub_directory=selected_server_directory)
