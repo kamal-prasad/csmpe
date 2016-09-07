@@ -28,6 +28,7 @@
 import re
 import time
 import itertools
+from condoor import ConnectionError
 from csmpe.core_plugins.csm_node_status_check.ios_xr.plugin_lib import parse_show_platform
 
 install_error_pattern = re.compile("Error:    (.*)$", re.MULTILINE)
@@ -87,7 +88,7 @@ def watch_operation(ctx, op_id=0):
                 if message != last_status:
                     ctx.post_status(message)
                     last_status = message
-        except (ctx.ConnectionError, ctx.CommandTimeoutError) as e:
+        except (ConnectionError, ctx.CommandTimeoutError) as e:
             if time_tried > 2:
                 raise e
 
