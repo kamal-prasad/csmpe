@@ -427,11 +427,10 @@ class Plugin(CSMPlugin):
             self.ctx.error("Failed to run the configuration migration tool on the admin configuration " +
                            "we retrieved from device - {}.".format(nox_error))
 
-        if filename.split('.')[0] == 'admin' and \
-                ((not os.path.isfile(os.path.join(fileloc, CONVERTED_ADMIN_CAL_CONFIG_IN_CSM))) or
-                     (not os.path.isfile(os.path.join(fileloc, CONVERTED_ADMIN_XR_CONFIG_IN_CSM)))):
-
-            self.ctx.error("Failed to convert the ASR9K admin configuration with NoX tool.")
+        if filename.split('.')[0] == 'admin':
+            if (not os.path.isfile(os.path.join(fileloc, CONVERTED_ADMIN_CAL_CONFIG_IN_CSM))) or \
+               (not os.path.isfile(os.path.join(fileloc, CONVERTED_ADMIN_XR_CONFIG_IN_CSM))):
+                self.ctx.error("Failed to convert the ASR9K admin configuration with NoX tool.")
 
         elif not os.path.isfile(os.path.join(fileloc, CONVERTED_XR_CONFIG_IN_CSM)):
             self.ctx.error("Failed to convert the ASR9K IOS-XR configuration with NoX tool.")
