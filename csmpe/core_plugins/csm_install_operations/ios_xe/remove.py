@@ -25,20 +25,50 @@
 # =============================================================================
 
 from csmpe.plugins import CSMPlugin
+from csmpe.core_plugins.csm_get_software_packages.ios_xe.plugin import get_package
+from utils import remove_exist_image
+from utils import number_of_rsp
 
 
 class Plugin(CSMPlugin):
-    """This plugin retrieves software information from the device."""
-    name = "Get Software Packages Plugin"
+    """This plugin removes inactive packages from the device."""
+    name = "Install Remove Plugin"
     platforms = {'ASR900'}
-    phases = {'Get-Software-Packages'}
+    phases = {'Remove'}
+    os = {'XE'}
 
     def run(self):
-        get_package(self.ctx)
+        packages_to_remove = self.ctx.software_packages
+        if packages_to_remove is None:
+            self.ctx.error("No package list provided")
+            return
 
+        self.ctx.info("Remove Package(s) Pending")
+        self.ctx.post_status("Remove Package(s) Pending")
 
-def get_package(ctx):
-    ctx.save_data("cli_show_install_committed", ctx.send("show version running | include File:"))
+        for pkg in packages_to_remove:
+            self.ctx.info("Delete package bootflash:{}".format(pkg))
 
-    ctx.send('cd bootflash:')
-    ctx.save_data("cli_show_install_inactive", ctx.send("dir"))
+            package = 'bootflash:' + pkg
+            output = remove_exist_image(self.ctx, package)
+
+            if not output:
+                self.ctx.info("bootflash:{} Removal Failed".format(pkg))
+                break
+
+            rsp_count = number_of_rsp(self.ctx)
+            if rsp_count == 2:
+                package = 'stby-bootflash:' + pkg
+                output = remove_exist_image(self.ctx, package)
+
+                if not output:
+                    self.ctx.info("stby-bootflash:{} Removal Failed".format(pkg))
+                    break
+        else:
+            self.ctx.info("Package(s) Removed Successfully")
+            # Refresh package information
+            get_package(self.ctx)
+            return
+
+        self.ctx.error("Package(s) Removal Failed")
+        return

@@ -42,8 +42,8 @@ from csmpe.context import InstallContext
 from csmpe.csm_pm import CSMPluginManager
 from csmpe.csm_pm import install_phases
 
-_PLATFORMS = ["ASR9K", "NCS6K", "CRS"]
-_OS = ["IOS", "XR", "eXR", "XR"]
+_PLATFORMS = ["ASR9K", "NCS6K", "CRS", "ASR900"]
+_OS = ["IOS", "XR", "eXR", "XE"]
 
 
 def print_plugin_info(pm, detail=False, brief=False):
