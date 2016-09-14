@@ -24,21 +24,49 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
 
+import re
 from csmpe.plugins import CSMPlugin
+from utils import install_add_remove
+from csmpe.core_plugins.csm_get_software_packages.ios_xe.plugin import get_package
 
 
 class Plugin(CSMPlugin):
-    """This plugin retrieves software information from the device."""
-    name = "Get Software Packages Plugin"
+    """This plugin adds packages from repository to the device."""
+    name = "Install Add Plugin"
     platforms = {'ASR900'}
-    phases = {'Get-Software-Packages'}
+    phases = {'Add'}
+    os = {'XE'}
+
 
     def run(self):
+        server_repository_url = self.ctx.server_repository_url
+
+        if server_repository_url is None:
+            self.ctx.error("No repository provided")
+            return
+
+        packages = self.ctx.software_packages
+        if packages is None:
+            self.ctx.error("No package list provided")
+            return
+
+        self.ctx.info("Add Package(s) Pending")
+        self.ctx.post_status("Add Package(s) Pending")
+
+        for package in packages:
+
+            output = self.ctx.send('dir bootflash:' + package)
+            m = re.search('No such file', output)
+
+            if not m:
+                self.ctx.info("No action: {} exists in bootflash:".format(package))
+                continue
+
+            cmd = "copy {}/{} bootflash:".format(server_repository_url, package)
+
+            install_add_remove(self.ctx, cmd)
+
+        self.ctx.info("Package(s) Added Successfully")
+
+        # Refresh package information
         get_package(self.ctx)
-
-
-def get_package(ctx):
-    ctx.save_data("cli_show_install_committed", ctx.send("show version running | include File:"))
-
-    ctx.send('cd bootflash:')
-    ctx.save_data("cli_show_install_inactive", ctx.send("dir"))

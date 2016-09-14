@@ -82,7 +82,10 @@ setup(
 
             '{} = csmpe.core_plugins.csm_node_status_check.exr.plugin:Plugin'.format(uuid4()),
 
+            '{} = csmpe.core_plugins.csm_node_status_check.ios_xe.plugin:Plugin'.format(uuid4()),
+
             '{} = csmpe.core_plugins.csm_redundancy_check.ios_xr.plugin:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_redundancy_check.ios_xe.plugin:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_error_core_check.ios_xr.plugin:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_check_isis_neighbors.ios_xr.plugin:Plugin'.format(uuid4()),
 
@@ -104,6 +107,11 @@ setup(
             '{} = csmpe.core_plugins.csm_install_operations.exr.commit:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_install_operations.exr.deactivate:Plugin'.format(uuid4()),
             '{} = csmpe.core_plugins.csm_install_operations.exr.remove:Plugin'.format(uuid4()),
+
+            '{} = csmpe.core_plugins.csm_install_operations.ios_xe.add:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_install_operations.ios_xe.pre_activate:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_install_operations.ios_xe.activate:Plugin'.format(uuid4()),
+            '{} = csmpe.core_plugins.csm_install_operations.ios_xe.remove:Plugin'.format(uuid4()),
         ],
     },
     classifiers=[
