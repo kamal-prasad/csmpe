@@ -36,6 +36,7 @@ from utils import install_package_family
 from utils import create_folder
 from utils import xe_show_platform
 
+
 class Plugin(CSMPlugin):
     """This plugin performs pre-activate tasks."""
     name = "Install Pre-Activate Plugin"

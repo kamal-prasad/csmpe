@@ -30,6 +30,7 @@ import string
 from csmpe.plugins import CSMPlugin
 from csmpe.core_plugins.csm_filesystem_check.ios_xe.utils import number_of_rsp
 
+
 class Plugin(CSMPlugin):
     """
     This plugin checks if the node redundancy is sufficient to proceed the upgrade.
@@ -130,4 +131,3 @@ class Plugin(CSMPlugin):
             self.ctx.info("Router redundancy has reached SSO state.")
         else:
             self.ctx.warning("Router redundancy has not reached SSO state.")
-

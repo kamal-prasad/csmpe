@@ -52,7 +52,7 @@ def number_of_rsp(ctx):
     """
     platforms = ['ASR-902', 'ASR-920']
     count = 0
-    valid_count=['1', '2']
+    valid_count = ['1', '2']
 
     if ctx._connection.platform in platforms:
         count = 1
@@ -133,7 +133,7 @@ def available_space(ctx, device):
     """
 
     available = -1
-    output = ctx.send('dir '+ device)
+    output = ctx.send('dir ' + device)
     m = re.search('(\d+) bytes free', output)
     if m:
         available = int(m.group(1))
@@ -375,7 +375,6 @@ def check_issu_readiness(ctx, pkg):
         ctx.warning("Show version command error!")
         return False
 
-
     # check software compatibility
     cmd = 'show version | include System image file'
     output = ctx.send(cmd)
@@ -394,7 +393,7 @@ def check_issu_readiness(ctx, pkg):
         ctx.warning("Show version command error!")
         return False
 
-    m = re.search('asr.*-(.*)\.\d+\.\d+\.\d+.*',pkg)
+    m = re.search('asr.*-(.*)\.\d+\.\d+\.\d+.*', pkg)
     if m:
         pkg_name = m.group(1)
         if img_name != pkg_name:
@@ -403,7 +402,6 @@ def check_issu_readiness(ctx, pkg):
     else:
         ctx.warning("Package name is not found in {}".format(pkg))
         return False
-
 
     # check image types between RSP's
     cmd = 'show version rp active running | include Package'
@@ -430,7 +428,6 @@ def check_issu_readiness(ctx, pkg):
         ctx.warning("Show version command error!")
         return False
 
-
     # check the required disk space for ISSU
     # bootflash: requires additional 250 MB
     # stby-bootflash: requires additional 450 MB
@@ -440,7 +437,7 @@ def check_issu_readiness(ctx, pkg):
         ctx.info("Total required / bootflash "
                  "available: {} / {} bytes".format(total_size, flash_free))
         ctx.info("Not enough space in bootflash: to perform ISSU. "
-                   "Setting the Router to boot in sub-package mode.")
+                 "Setting the Router to boot in sub-package mode.")
         return False
 
     total_size = 450000000
@@ -453,7 +450,6 @@ def check_issu_readiness(ctx, pkg):
         return False
     else:
         ctx.info("There is enough space on bootflash and stby-bootflash to perform ISSU")
-
 
     # check show redundancy
     cmd = 'show redundancy | include Configured Redundancy Mode'
@@ -562,8 +558,8 @@ def xe_show_platform(ctx):
             if m:
                 break
 
-            Slot =  line[:8].strip()
-            Type =  line[10:28].strip()
+            Slot = line[:8].strip()
+            Type = line[10:28].strip()
             State = line[30:50].strip()
 
             m1 = re.search('^0\/\d+', Slot)
@@ -572,4 +568,3 @@ def xe_show_platform(ctx):
                 platform_info[Slot] = [Type, State]
 
     return platform_info
-

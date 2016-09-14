@@ -31,6 +31,7 @@ from utils import install_add_remove
 
 plugin_ctx = None
 
+
 def send_newline(fsm_ctx):
     fsm_ctx.ctrl.sendline('\r\n')
     fsm_ctx.ctrl.sendline('\r\n')

@@ -26,10 +26,8 @@
 
 
 # from package_lib import SoftwarePackage
-import re
 from time import time
 from datetime import datetime
-
 from csmpe.plugins import CSMPlugin
 from install import expand_subpkgs
 from install import install_activate_reload
@@ -41,13 +39,13 @@ from utils import remove_exist_image
 from utils import xe_show_platform
 from utils import install_add_remove
 
+
 class Plugin(CSMPlugin):
     """This plugin Activates packages on the device."""
     name = "Install Activate Plugin"
     platforms = {'ASR900'}
     phases = {'Activate'}
     os = {'XE'}
-
 
     def run(self):
         """

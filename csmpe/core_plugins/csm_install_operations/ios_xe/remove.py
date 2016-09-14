@@ -46,8 +46,6 @@ class Plugin(CSMPlugin):
         self.ctx.info("Remove Package(s) Pending")
         self.ctx.post_status("Remove Package(s) Pending")
 
-        prompt = self.ctx._connection.hostname
-
         for pkg in packages_to_remove:
             self.ctx.info("Delete package bootflash:{}".format(pkg))
 
