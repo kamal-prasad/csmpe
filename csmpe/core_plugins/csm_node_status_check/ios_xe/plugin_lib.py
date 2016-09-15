@@ -54,7 +54,7 @@ def parse_show_platform(ctx, output):
 
     inventory = {}
     lines = output.split('\n')
-
+    lines = [x for x in lines if x]
     slotcnt = 0
     for line in lines:
         line = line.strip()
