@@ -42,6 +42,7 @@ class Plugin(CSMPlugin):
             'ok, active',
             'ok, standby',
             'ps, fail',
+            'out of service',
             'N/A'
         ]
         for key, value in inventory.items():
