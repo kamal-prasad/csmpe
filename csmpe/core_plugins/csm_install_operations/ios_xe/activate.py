@@ -135,7 +135,8 @@ class Plugin(CSMPlugin):
 
         # Verify the version after activation
         if self.ctx._connection.os_version not in pkg:
-            self.ctx.error('The post-activate OS Version: {}'.self.ctx._connection.os_version)
+            self.ctx.error('The post-activate OS Version: '
+                           '{}'.format(self.ctx._connection.os_version))
 
         # Verify the status of RP and SIP
         previous_data, timestamp = self.ctx.load_data('xe_show_platform')
