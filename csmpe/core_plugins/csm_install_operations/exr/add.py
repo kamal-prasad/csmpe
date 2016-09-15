@@ -38,7 +38,7 @@ class Plugin(CSMPlugin):
     phases = {'Add'}
     os = {'eXR'}
 
-    def install_add(self, server, server_repository_url, s_packages, has_tar=False):
+    def install_add(self, server_repository_url, s_packages, has_tar=False):
         """
         Success Condition:
         ADD for tftp/local:
@@ -54,28 +54,25 @@ class Plugin(CSMPlugin):
         password:Jun 20 18:58:24 Install operation will continue in the background
         RP/0/RP0/CPU0:Deploy-2#
         """
-        if server.server_type == ServerType.TFTP_SERVER or server.server_type == ServerType.LOCAL_SERVER:
+        if server_repository_url.startswith("sftp://") or server_repository_url.startswith("ftp://"):
+
+            if server_repository_url.count(":") != 2 or server_repository_url.count("@") != 1:
+                self.ctx.error("The server repository url provided - {} - ".format(server_repository_url) +
+                               "does not conform to <protocol>://<username>:<password>@<ip>/<directory>." +
+                               "Special characters ':' and '@' are not allowed in username, password or directory.")
+
+            front = server_repository_url.rsplit(":", 1)
+
+            end = front[1].split("@", 1)
+            url_without_password = front[0] + "@" + end[1]
+
+            cmd = "install add source {} {}".format(url_without_password, s_packages)
+            output1 = self.ctx.send(cmd, wait_for_string="[Pp]assword:", timeout=60)
+            output2 = self.ctx.send(end[0], timeout=100)
+            output = output1 + output2
+        else:
             cmd = "install add source {} {}".format(server_repository_url, s_packages)
             output = self.ctx.send(cmd, timeout=100)
-
-        elif server.server_type == ServerType.SFTP_SERVER or server.server_type == ServerType.FTP_SERVER:
-            protocol = 'ftp' if server.server_type == ServerType.FTP_SERVER else 'sftp'
-            url = protocol + "://{}@{}".format(server.username, server.server_url)
-
-            if not is_empty(server.vrf):
-                url = url + ";{}".format(server.vrf)
-
-            remote_directory = concatenate_dirs(server.server_directory, self.ctx._csm.install_job.server_directory)
-            if not is_empty(remote_directory):
-                url = url + "/{}".format(remote_directory)
-
-            cmd = "install add source {} {}".format(url, s_packages)
-            output1 = self.ctx.send(cmd, wait_for_string="[Pp]assword:", timeout=60)
-            output2 = self.ctx.send(server.password, timeout=100)
-            output = output1 + output2
-
-        else:
-            self.ctx.error("Unsupported server repository type: {}".format(str(server.server_type)))
 
         observe_install_add_remove(self.ctx, output, has_tar=has_tar)
 
@@ -85,11 +82,6 @@ class Plugin(CSMPlugin):
         server_repository_url = self.ctx.server_repository_url
         if server_repository_url is None:
             self.ctx.error("No repository provided")
-            return
-
-        server = self.ctx.get_server
-        if server is None:
-            self.ctx.error("No server repository provided")
             return
 
         packages = self.ctx.software_packages
@@ -115,7 +107,7 @@ class Plugin(CSMPlugin):
         self.ctx.info("Add Package(s) Pending")
         self.ctx.post_status("Add Package(s) Pending")
 
-        self.install_add(server, server_repository_url, s_packages, has_tar=has_tar)
+        self.install_add(server_repository_url, s_packages, has_tar=has_tar)
 
         self.ctx.info("Package(s) Added Successfully")
 
