@@ -28,7 +28,7 @@
 import re
 import string
 from csmpe.plugins import CSMPlugin
-from csmpe.core_plugins.csm_filesystem_check.ios_xe.utils import number_of_rsp
+from csmpe.core_plugins.csm_install_operations.ios_xe.utils import number_of_rsp
 
 
 class Plugin(CSMPlugin):
