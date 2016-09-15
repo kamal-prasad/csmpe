@@ -1,6 +1,7 @@
 # =============================================================================
+# asr9k
 #
-# Copyright (c) 2016, Cisco Systems
+# Copyright (c)  2016, Cisco Systems
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -23,22 +24,34 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
 # THE POSSIBILITY OF SUCH DAMAGE.
 # =============================================================================
-
 from csmpe.plugins import CSMPlugin
+from plugin_lib import parse_show_platform
 
 
 class Plugin(CSMPlugin):
-    """This plugin retrieves software information from the device."""
-    name = "Get Software Packages Plugin"
+    """This plugin checks the states of all nodes"""
+    name = "Node Status Check Plugin"
     platforms = {'ASR900'}
-    phases = {'Get-Software-Packages'}
+    phases = {'Pre-Upgrade', 'Post-Upgrade'}
 
     def run(self):
-        get_package(self.ctx)
+        output = self.ctx.send("show platform")
+        inventory = parse_show_platform(self.ctx, output)
+        valid_state = [
+            'ok',
+            'ok, active',
+            'ok, standby',
+            'ps, fail',
+            'out of service',
+            'N/A'
+        ]
+        for key, value in inventory.items():
+            if value['state'] not in valid_state:
+                self.ctx.warning("{}={}: {}".format(key, value, "Not in valid state for upgrade"))
+                break
+        else:
+            self.ctx.save_data("inventory", inventory)
+            self.ctx.info("All nodes in valid state for upgrade")
+            return True
 
-
-def get_package(ctx):
-    ctx.save_data("cli_show_install_committed", ctx.send("show version running | include File:"))
-
-    ctx.send('cd bootflash:')
-    ctx.save_data("cli_show_install_inactive", ctx.send("dir"))
+        self.ctx.error("Not all nodes in correct state. Upgrade can not proceed")
