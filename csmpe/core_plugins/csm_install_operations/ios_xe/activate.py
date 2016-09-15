@@ -162,7 +162,7 @@ class Plugin(CSMPlugin):
                 self.ctx.warning("\t Pre-Activate State = {} vs. Post-Activate State = "
                                  "{}".format(previous_state, current_state))
             if 'ok' not in current_state:
-                self.ctx.error("Slot {} Type {} is not in 'ok' state after "
-                               "activation".format(Slot, Type))
+                self.ctx.warning("Slot {} Type {} is not in 'ok' state after "
+                                 "activation".format(Slot, Type))
 
         self.ctx.info("The status of RP and SIP has been verified. Please check any warnings in plugins.log")
