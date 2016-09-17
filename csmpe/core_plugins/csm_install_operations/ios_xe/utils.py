@@ -147,11 +147,23 @@ def installed_package_name(ctx, pkg_conf):
     :param: pkg_conf such as bootflash:/Image/packages.conf
     :return: the installed package name
     """
+    output = ctx.send('dir ' + pkg_conf)
+    if not output:
+        ctx.error("dir {} failed".format(pkg_conf))
+        return None
+
+    m = re.search('No such file', output)
+    if m:
+        ctx.info('{} does not exist'.format(pkg_conf))
+        return None
+
     cmd = "more " + pkg_conf + " | include PackageName"
     output = ctx.send(cmd)
     m = re.search('pkginfo: PackageName: (.*)$', output)
     if m:
         img_name = m.group(1)
+        ctx.info("installed_package_name: installed "
+                 "name = {}".format(img_name))
         return img_name
     else:
         ctx.info("PackageName is not found in {}".format(pkg_conf))
@@ -174,6 +186,8 @@ def installed_package_version(ctx):
     m = re.search('Version (.*) -', output)
     if m:
         bld_version = m.group(1)
+        ctx.info("installed_package_version: installed "
+                 "version = {}".format(bld_version))
         return bld_version
     else:
         ctx.info("Build version is not found in show version: {}".format(output))
@@ -198,6 +212,7 @@ def installed_package_device(ctx):
                 img_dev = m.group(1)
                 break
 
+    ctx.info("installed_package_device: device type = {}".format(img_dev))
     return img_dev
 
 
@@ -237,6 +252,29 @@ def install_add_remove(ctx, cmd):
     else:
         log_install_errors(ctx, output)
         ctx.error("Command {} failed".format(cmd))
+
+
+def check_pkg_conf(ctx, folder):
+    """
+    Remove the existing packages
+
+    :param ctx
+    :param folder: i.e. bootflash:/Image
+    :return: True or False
+    """
+    pkg_conf = folder + '/packages.conf'
+    output = ctx.send('more ' + pkg_conf + ' | include pkg$')
+
+    if not output:
+        return False
+
+    lines = string.split(output, '\n')
+    lines = [x for x in lines if x]
+    for line in lines:
+        if ctx._connection.os_version not in line:
+            return False
+
+    return True
 
 
 def remove_exist_image(ctx, package):

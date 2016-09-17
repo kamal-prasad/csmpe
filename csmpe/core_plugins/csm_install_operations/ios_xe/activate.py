@@ -26,6 +26,7 @@
 
 
 # from package_lib import SoftwarePackage
+import re
 from time import time
 from datetime import datetime
 from csmpe.plugins import CSMPlugin
@@ -38,6 +39,7 @@ from csmpe.core_plugins.csm_install_operations.utils import update_device_info_u
 from utils import remove_exist_image
 from utils import xe_show_platform
 from utils import install_add_remove
+from utils import installed_package_name
 
 
 class Plugin(CSMPlugin):
@@ -113,16 +115,6 @@ class Plugin(CSMPlugin):
             cmd = 'request platform software package install node file ' + \
                   folder + '/' + pkg + ' interface-module-delay 160'
             install_activate_issu(self.ctx, cmd)
-
-            # Remove all-in-one image from the installed folder
-            package = folder + '/' + pkg
-            remove_exist_image(self.ctx, package)
-            package = 'stby-' + package
-            remove_exist_image(self.ctx, package)
-
-            # Remove the all-in-one image from stby-bootflash:
-            package = 'stby-bootflash:' + pkg
-            remove_exist_image(self.ctx, package)
         else:
             install_activate_reload(self.ctx)
 
@@ -130,13 +122,54 @@ class Plugin(CSMPlugin):
 
         # Refresh package information
         get_package(self.ctx)
-
         update_device_info_udi(self.ctx)
 
-        # Verify the version after activation
+        # Verify the version
+        activate_success = True
         if self.ctx._connection.os_version not in pkg:
-            self.ctx.error('The post-activate OS Version: '
-                           '{}'.format(self.ctx._connection.os_version))
+            activate_success = False
+            self.ctx.warning('The post-activate OS Version: {} while Activate package = '
+                             '{}'.format(self.ctx._connection.os_version, pkg))
+
+        # Verify the Image type
+        if mode == 'issu' or mode == 'subpackage':
+            pkg_conf = folder + '/packages.conf'
+            image_type = installed_package_name(self.ctx, pkg_conf)
+            if not image_type:
+                activate_success = False
+                self.ctx.warning('{} does not exist.'.format(pkg_conf))
+
+            if image_type not in pkg:
+                activate_success = False
+                self.ctx.warning('The post-activate image type: {} while Activate package = '
+                                 '{}'.format(image_type, pkg))
+        else:
+            # mode is consolidated
+            output = self.ctx.send('show version | include ^System image')
+            if output:
+                m = re.search('(asr.*\.bin)', output)
+                if m:
+                    image_type = m.group(0)
+                    if image_type not in pkg:
+                        self.ctx.error('The post-activate image type: {} while Activate package = '
+                                         '{}'.format(image_type, pkg))
+                else:
+                    activate_success = False
+                    self.ctx.warning('System image not found in show version: {}'.format(output))
+            else:
+                activate_success = False
+                self.ctx.warning('System image not found in show version: {}'.format(output))
+
+        if not activate_success:
+            self.ctx.error('Activte image {} has failed'.format(pkg))
+
+        if mode == 'issu':
+            # Remove all-in-one image from the installed folder
+            package = folder + '/' + pkg
+            remove_exist_image(self.ctx, package)
+            if rsp_count == 2:
+                package = 'stby-' + package
+                remove_exist_image(self.ctx, package)
 
         # Verify the status of RP and SIP
         previous_data, timestamp = self.ctx.load_data('xe_show_platform')
