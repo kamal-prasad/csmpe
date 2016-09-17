@@ -152,7 +152,7 @@ class Plugin(CSMPlugin):
                     image_type = m.group(0)
                     if image_type not in pkg:
                         self.ctx.error('The post-activate image type: {} while Activate package = '
-                                         '{}'.format(image_type, pkg))
+                                       '{}'.format(image_type, pkg))
                 else:
                     activate_success = False
                     self.ctx.warning('System image not found in show version: {}'.format(output))
