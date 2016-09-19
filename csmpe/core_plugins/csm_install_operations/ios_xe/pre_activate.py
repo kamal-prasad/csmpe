@@ -35,6 +35,7 @@ from utils import remove_exist_subpkgs
 from utils import install_package_family
 from utils import create_folder
 from utils import xe_show_platform
+from utils import check_pkg_conf
 
 
 class Plugin(CSMPlugin):
@@ -88,6 +89,24 @@ class Plugin(CSMPlugin):
                            format(pkg, self.ctx._connection.platform))
             return
 
+        # check the RSP type between image and device:
+        curr_rsp = None
+        pkg_rsp = None
+
+        output = self.ctx.send("show version | include RSP")
+        if output:
+            m = re.search('(RSP\d)', output)
+            if m:
+                curr_rsp = m.group(0).lower()
+
+            m = re.search('(rsp\d)', pkg)
+            if m:
+                pkg_rsp = m.group(0)
+
+            if curr_rsp and pkg_rsp and curr_rsp != pkg_rsp:
+                self.ctx.error("Incompatible Route processor in {} for this device {}".format(pkg, curr_rsp))
+                return False
+
         # Determine one of the following modes: consolidated, subpackage, or issu
 
         if self.ctx._connection.platform in con_platforms:
@@ -119,9 +138,21 @@ class Plugin(CSMPlugin):
 
         total_size = 10000000
 
+        valid_pkg_conf = False
         if mode == 'subpackage':
+            # Check if the packages.conf is valid
+            valid_pkg_conf = check_pkg_conf(self.ctx, folder)
+
             # Remove residual image files from previous installations
-            remove_exist_subpkgs(self.ctx, folder, pkg)
+            if valid_pkg_conf:
+                remove_exist_subpkgs(self.ctx, folder, pkg)
+            else:
+                self.ctx.warning("Empty or invalid {}/packages.conf".format(folder))
+                self.ctx.warning("Residual packages from previous installations are not "
+                                 "automatically removed from bootflash: / stby-bootflash:.")
+                self.ctx.info("Sub-package mode will be performed to "
+                              "activate package = {}".format(pkg))
+
             cmd = "dir bootflash: | include " + pkg
             output = self.ctx.send(cmd)
             if output:
@@ -141,7 +172,8 @@ class Plugin(CSMPlugin):
             self.ctx.info("There is enough space on bootflash: to install packages.")
 
         if rsp_count == 2:
-            remove_exist_subpkgs(self.ctx, stby_folder, pkg)
+            if valid_pkg_conf:
+                remove_exist_subpkgs(self.ctx, stby_folder, pkg)
             stby_free = available_space(self.ctx, 'stby-bootflash:')
             self.ctx.info("Total required / stby-bootflash "
                           "available: {} / {} bytes".format(total_size, stby_free))
@@ -154,7 +186,7 @@ class Plugin(CSMPlugin):
                 self.ctx.info("There is enough space on stby-bootflash: to install packages.")
 
         # Determine if ISSU is feasible
-        if mode == 'subpackage' and rsp_count == 2:
+        if mode == 'subpackage' and rsp_count == 2 and valid_pkg_conf:
             if check_issu_readiness(self.ctx, pkg):
                 mode = 'issu'
                 self.ctx.info("ISSU will be performed to activate package = {}".format(pkg))
