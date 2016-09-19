@@ -27,7 +27,6 @@
 from csmpe.plugins import CSMPlugin
 from install import observe_install_add_remove
 from install import check_ncs6k_release
-from csmpe.core_plugins.csm_install_operations.utils import ServerType, is_empty, concatenate_dirs
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 
 
