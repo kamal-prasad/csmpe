@@ -36,6 +36,13 @@ class Plugin(CSMPlugin):
 
     def run(self):
         get_package(self.ctx)
+        get_inventory(self.ctx)
+
+
+def get_inventory(ctx):
+    # Save the output of "show inventory" in admin mode
+    output = get_output_in_admin_mode(ctx, "show inventory")
+    ctx.save_data("inventory", output)
 
 
 def get_package(ctx):
@@ -44,9 +51,12 @@ def get_package(ctx):
     """
 
     # Get the admin packages
-    ctx.save_data("cli_admin_show_install_inactive", get_admin_package(ctx, "show install inactive"))
-    ctx.save_data("cli_admin_show_install_active", get_admin_package(ctx, "show install active"))
-    ctx.save_data("cli_admin_show_install_committed", get_admin_package(ctx, "show install committed"))
+    ctx.save_data("cli_admin_show_install_inactive",
+                  get_output_in_admin_mode(ctx, "show install inactive"))
+    ctx.save_data("cli_admin_show_install_active",
+                  get_output_in_admin_mode(ctx, "show install active"))
+    ctx.save_data("cli_admin_show_install_committed",
+                  get_output_in_admin_mode(ctx, "show install committed"))
 
     # Get the non-admin packages
     ctx.save_data("cli_show_install_inactive", ctx.send("show install inactive"))
@@ -54,9 +64,8 @@ def get_package(ctx):
     ctx.save_data("cli_show_install_committed", ctx.send("show install committed"))
 
 
-def get_admin_package(ctx, cmd):
+def get_output_in_admin_mode(ctx, cmd):
     ctx.send("admin")
     output = ctx.send(cmd)
     ctx.send("exit")
-
     return output
