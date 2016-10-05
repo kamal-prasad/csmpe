@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python -t
 # =============================================================================
 #
 # Copyright (c) 2016, Cisco Systems
@@ -42,7 +42,7 @@ from csmpe.context import InstallContext
 from csmpe.csm_pm import CSMPluginManager
 from csmpe.csm_pm import install_phases
 
-_PLATFORMS = ["ASR9K", "NCS6K", "CRS", "ASR900"]
+_PLATFORMS = ["ASR9K", "NCS6K", "CRS", "ASR900", "XRV9K"]
 _OS = ["IOS", "XR", "eXR", "XE"]
 
 
@@ -127,7 +127,6 @@ def plugin_list(platform, phase, os, detail, brief):
 
     print_plugin_info(pm, detail, brief)
 
-
 @cli.command("run", help="Run specific plugin on the device.", short_help="Run plugin")
 @click.option("--url", multiple=True, required=True, envvar='CSMPLUGIN_URLS', type=URL(),
               help='The connection url to the host (i.e. telnet://user:pass@hostname). '
@@ -168,6 +167,60 @@ def plugin_run(url, phase, cmd, log_dir, package, repository_url, plugin_name):
     ctx.software_packages = list(package)
     ctx.server_repository_url = repository_url
 
+    if cmd:
+        ctx.custom_commands = list(cmd)
+
+    pm = CSMPluginManager(ctx)
+    pm.set_name_filter(plugin_name)
+    results = pm.dispatch("run")
+
+    click.echo("\n Plugin execution finished.\n")
+    click.echo("Log files dir: {}".format(log_dir))
+    click.echo(" {} - device session log".format(session_filename))
+    click.echo(" {} - plugin execution log".format(plugins_filename))
+    click.echo(" {} - device connection debug log".format(condoor_filename))
+    click.echo("Results: {}".format(" ".join(map(str, results))))
+
+@cli.command("sanity", help="Run sanity plugin on the device.", short_help="Run sanity")
+@click.option("--url", multiple=True, required=True, envvar='CSMPLUGIN_URLS', type=URL(),
+              help='The connection url to the host (i.e. telnet://user:pass@hostname). '
+                   'The --url option can be repeated to define multiple jumphost urls. '
+                   'If no --url option provided the CSMPLUGIN_URLS environment variable is used.')
+@click.option("--phase", required=False, type=click.Choice(install_phases),
+              help="An install phase to run the plugin for.")
+@click.option("--cmd", multiple=True, default=[],
+              help='The command to be passed to the plugin in ')
+@click.option("--log_dir", default="/tmp", type=click.Path(),
+              help="An install phase to run the plugin for. If not path specified then default /tmp directory is used.")
+@click.option("--package", default=[], multiple=True,
+              help="Package for install operations. This package option can be repeated to provide multiple packages.")
+@click.option("--repository_url", default=None,
+              help="The package repository URL. (i.e. tftp://server/dir")
+@click.argument("plugin_name", required=False, default=None)
+def plugin_sanity(url, phase, cmd, log_dir, package, repository_url, plugin_name):
+
+    ctx = InstallContext()
+    ctx.hostname = "Hostname"
+    ctx.host_urls = list(url)
+    ctx.success = False
+
+    ctx.requested_action = phase
+    ctx.log_directory = log_dir
+    session_filename = os.path.join(log_dir, "session.log")
+    plugins_filename = os.path.join(log_dir, "plugins.log")
+    condoor_filename = os.path.join(log_dir, "condoor.log")
+
+    if os.path.exists(session_filename):
+        os.remove(session_filename)
+    if os.path.exists(plugins_filename):
+        os.remove(plugins_filename)
+    if os.path.exists(condoor_filename):
+        os.remove(condoor_filename)
+
+    ctx.log_level = logging.DEBUG
+    ctx.software_packages = list(package)
+    ctx.server_repository_url = repository_url
+    
     if cmd:
         ctx.custom_commands = list(cmd)
 
