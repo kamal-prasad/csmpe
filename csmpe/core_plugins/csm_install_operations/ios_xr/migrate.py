@@ -30,11 +30,8 @@ import re
 from csmpe.plugins import CSMPlugin
 from csmpe.context import PluginError
 from csmpe.core_plugins.csm_custom_commands_capture.plugin import Plugin as CmdCapturePlugin
-from condoor.controllers.protocols.base import PASSWORD_PROMPT, USERNAME_PROMPT, PERMISSION_DENIED, \
-    AUTH_FAILED, RESET_BY_PEER, SET_USERNAME, SET_PASSWORD, \
-    PASSWORD_OK, PRESS_RETURN, UNABLE_TO_CONNECT
-from condoor.controllers.protocols.telnet import ESCAPE_CHAR, CONNECTION_REFUSED
-from condoor.exceptions import ConnectionError, ConnectionAuthenticationError
+import condoor.ConnectionError
+import condoor.ConnectionAuthenticationError
 from migration_lib import wait_for_final_band, log_and_post_status
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 from csmpe.core_plugins.csm_install_operations.utils import update_device_info_udi
@@ -47,6 +44,31 @@ SCRIPT_BACKUP_ADMIN_CONFIG = "harddiskb:/admin.cfg"
 
 MIGRATION_TIME_OUT = 3600
 NODES_COME_UP_TIME_OUT = 3600
+
+PASSWORD_PROMPT = re.compile("[P|p]assword:\s?")
+USERNAME_PROMPT = re.compile("([U|u]sername:|login:)\s?")
+
+PERMISSION_DENIED = "Permission denied"
+AUTH_FAILED = "Authentication failed|not authorized|Login incorrect"
+RESET_BY_PEER = "reset by peer|closed by foreign host"
+SET_USERNAME = "[Ee]nter.*username:"
+SET_PASSWORD = "Enter secret"
+PASSWORD_OK = "[Pp]assword [Oo][Kk]"
+PRESS_RETURN = "Press RETURN to get started\."
+
+# Error when the hostname can't be resolved or there is
+# network reachability timeout
+UNABLE_TO_CONNECT = "nodename nor servname provided, or not known|" \
+                    "Unknown host|" \
+                    "[Operation|Connection] timed out|" \
+                    "[D|d]estination unreachable|" \
+                    "[U|u]nable to connect|" \
+                    "[C|c]onnection refused"
+
+# Telnet connection initiated
+ESCAPE_CHAR = "Escape character is|Open"
+# Connection refused i.e. line busy on TS
+CONNECTION_REFUSED = re.compile("Connection refused")
 
 
 class Plugin(CSMPlugin):
@@ -146,22 +168,22 @@ class Plugin(CSMPlugin):
             (PASSWORD_PROMPT, [8], 9, send_password, 30),
             (XR_PROMPT, [0, 9, 10], -1, None, 10),
 
-            (UNABLE_TO_CONNECT, [0, 1], 11, ConnectionError("Unable to connect", self.ctx._connection.hostname), 10),
+            (UNABLE_TO_CONNECT, [0, 1], 11, condoor.ConnectionError("Unable to connect", self.ctx._connection.hostname), 10),
             (CONNECTION_REFUSED, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11,
-             ConnectionError("Connection refused", "i"), 1),
+             condoor.ConnectionError("Connection refused", "i"), 1),
 
             (RESET_BY_PEER, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11,
-             ConnectionError("Connection reset by peer", self.ctx._connection.hostname), 1),
+             condoor.ConnectionError("Connection reset by peer", self.ctx._connection.hostname), 1),
 
             (PERMISSION_DENIED, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11,
-             ConnectionAuthenticationError("Permission denied", self.ctx._connection.hostname), 1),
+             condoor.ConnectionAuthenticationError("Permission denied", self.ctx._connection.hostname), 1),
 
-            (AUTH_FAILED, [6, 9], 11, ConnectionAuthenticationError("Authentication failed",
+            (AUTH_FAILED, [6, 9], 11, condoor.ConnectionAuthenticationError("Authentication failed",
                                                                     self.ctx._connection.hostname), 1),
             (TIMEOUT, [0], 1, None, 20),
             (TIMEOUT, [1], 2, None, 40),
             (TIMEOUT, [2], 3, None, 60),
-            (TIMEOUT, [3, 7], 11, ConnectionError("Timeout waiting to connect", self.ctx._connection.hostname), 10),
+            (TIMEOUT, [3, 7], 11, condoor.ConnectionError("Timeout waiting to connect", self.ctx._connection.hostname), 10),
             (TIMEOUT, [6], 7, None, 20),
             (TIMEOUT, [9], 10, None, 60),
         ]
