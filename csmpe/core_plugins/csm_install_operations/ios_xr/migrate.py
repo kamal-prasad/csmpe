@@ -32,7 +32,7 @@ from csmpe.context import PluginError
 from csmpe.core_plugins.csm_custom_commands_capture.plugin import Plugin as CmdCapturePlugin
 from condoor import ConnectionAuthenticationError, ConnectionError
 from migration_lib import wait_for_final_band, log_and_post_status
-from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
+from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package, get_inventory
 from csmpe.core_plugins.csm_install_operations.utils import update_device_info_udi
 
 
@@ -232,8 +232,9 @@ class Plugin(CSMPlugin):
         except PluginError as e:
             log_and_post_status(self.ctx, "Failed to capture 'show platform' - ({}): {}".format(e.errno, e.strerror))
 
-        # Refresh package information
+        # Refresh package and inventory information
         get_package(self.ctx)
+        get_inventory(self.ctx)
 
         update_device_info_udi(self.ctx)
 
