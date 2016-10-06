@@ -30,8 +30,7 @@ import re
 from csmpe.plugins import CSMPlugin
 from csmpe.context import PluginError
 from csmpe.core_plugins.csm_custom_commands_capture.plugin import Plugin as CmdCapturePlugin
-import condoor.ConnectionError
-import condoor.ConnectionAuthenticationError
+from condoor import ConnectionAuthenticationError, ConnectionError
 from migration_lib import wait_for_final_band, log_and_post_status
 from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
 from csmpe.core_plugins.csm_install_operations.utils import update_device_info_udi
@@ -168,22 +167,22 @@ class Plugin(CSMPlugin):
             (PASSWORD_PROMPT, [8], 9, send_password, 30),
             (XR_PROMPT, [0, 9, 10], -1, None, 10),
 
-            (UNABLE_TO_CONNECT, [0, 1], 11, condoor.ConnectionError("Unable to connect", self.ctx._connection.hostname), 10),
+            (UNABLE_TO_CONNECT, [0, 1], 11, ConnectionError("Unable to connect", self.ctx._connection.hostname), 10),
             (CONNECTION_REFUSED, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11,
-             condoor.ConnectionError("Connection refused", "i"), 1),
+             ConnectionError("Connection refused", "i"), 1),
 
             (RESET_BY_PEER, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11,
-             condoor.ConnectionError("Connection reset by peer", self.ctx._connection.hostname), 1),
+             ConnectionError("Connection reset by peer", self.ctx._connection.hostname), 1),
 
             (PERMISSION_DENIED, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11,
-             condoor.ConnectionAuthenticationError("Permission denied", self.ctx._connection.hostname), 1),
+             ConnectionAuthenticationError("Permission denied", self.ctx._connection.hostname), 1),
 
-            (AUTH_FAILED, [6, 9], 11, condoor.ConnectionAuthenticationError("Authentication failed",
+            (AUTH_FAILED, [6, 9], 11, ConnectionAuthenticationError("Authentication failed",
                                                                     self.ctx._connection.hostname), 1),
             (TIMEOUT, [0], 1, None, 20),
             (TIMEOUT, [1], 2, None, 40),
             (TIMEOUT, [2], 3, None, 60),
-            (TIMEOUT, [3, 7], 11, condoor.ConnectionError("Timeout waiting to connect", self.ctx._connection.hostname), 10),
+            (TIMEOUT, [3, 7], 11, ConnectionError("Timeout waiting to connect", self.ctx._connection.hostname), 10),
             (TIMEOUT, [6], 7, None, 20),
             (TIMEOUT, [9], 10, None, 60),
         ]
