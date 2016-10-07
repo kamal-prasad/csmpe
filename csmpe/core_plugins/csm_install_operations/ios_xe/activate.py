@@ -120,6 +120,10 @@ class Plugin(CSMPlugin):
 
         self.ctx.info("Activate package done")
 
+        # Refresh package information
+        get_package(self.ctx)
+        update_device_info_udi(self.ctx)
+
         # Verify the version
         activate_success = True
         if self.ctx._connection.os_version not in pkg:
@@ -157,11 +161,10 @@ class Plugin(CSMPlugin):
                 self.ctx.warning('System image not found in show version: {}'.format(output))
 
         if not activate_success:
-            self.ctx.error('Activte image {} has failed'.format(pkg))
-        else:
             # Refresh package information
             get_package(self.ctx)
             update_device_info_udi(self.ctx)
+            self.ctx.error('Activte image {} has failed'.format(pkg))
 
         if mode == 'issu':
             # Remove all-in-one image from the installed folder
