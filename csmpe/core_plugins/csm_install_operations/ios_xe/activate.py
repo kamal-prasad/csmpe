@@ -73,8 +73,8 @@ class Plugin(CSMPlugin):
         if mode == 'issu':
             cmd = 'copy bootflash:' + pkg + ' ' + folder + '/' + pkg
             install_add_remove(self.ctx, cmd)
-            package = 'bootflash:' + pkg
-            remove_exist_image(self.ctx, package)
+            # package = 'bootflash:' + pkg
+            # remove_exist_image(self.ctx, package)
 
         # subpackage: need to expand the consolidated image to the installed folder
         if mode == 'subpackage':
@@ -120,10 +120,6 @@ class Plugin(CSMPlugin):
 
         self.ctx.info("Activate package done")
 
-        # Refresh package information
-        get_package(self.ctx)
-        update_device_info_udi(self.ctx)
-
         # Verify the version
         activate_success = True
         if self.ctx._connection.os_version not in pkg:
@@ -162,6 +158,10 @@ class Plugin(CSMPlugin):
 
         if not activate_success:
             self.ctx.error('Activte image {} has failed'.format(pkg))
+        else:
+            # Refresh package information
+            get_package(self.ctx)
+            update_device_info_udi(self.ctx)
 
         if mode == 'issu':
             # Remove all-in-one image from the installed folder

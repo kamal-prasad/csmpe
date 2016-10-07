@@ -187,7 +187,7 @@ class Plugin(CSMPlugin):
 
         # Determine if ISSU is feasible
         if mode == 'subpackage' and rsp_count == 2 and valid_pkg_conf:
-            if check_issu_readiness(self.ctx, pkg):
+            if check_issu_readiness(self.ctx, pkg, total_size):
                 mode = 'issu'
                 self.ctx.info("ISSU will be performed to activate package = {}".format(pkg))
 

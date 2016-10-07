@@ -387,12 +387,13 @@ def remove_exist_subpkgs(ctx, folder, pkg):
     return
 
 
-def check_issu_readiness(ctx, pkg):
+def check_issu_readiness(ctx, pkg, image_size):
     """
     Expand the consolidated file into the image folder
 
     :param: ctx
     :param: pkg
+    :param: image_size
     :return: True or False
     """
 
@@ -469,7 +470,7 @@ def check_issu_readiness(ctx, pkg):
     # check the required disk space for ISSU
     # bootflash: requires additional 250 MB
     # stby-bootflash: requires additional 450 MB
-    total_size = 250000000
+    total_size = 250000000 + image_size
     flash_free = available_space(ctx, 'bootflash:')
     if flash_free < total_size:
         ctx.info("Total required / bootflash "
@@ -478,7 +479,7 @@ def check_issu_readiness(ctx, pkg):
                  "Setting the Router to boot in sub-package mode.")
         return False
 
-    total_size = 450000000
+    total_size = 450000000 + image_size
     flash_free = available_space(ctx, 'stby-bootflash:')
     if flash_free < total_size:
         ctx.info("Total required / stby-bootflash "
