@@ -73,8 +73,8 @@ class Plugin(CSMPlugin):
         if mode == 'issu':
             cmd = 'copy bootflash:' + pkg + ' ' + folder + '/' + pkg
             install_add_remove(self.ctx, cmd)
-            package = 'bootflash:' + pkg
-            remove_exist_image(self.ctx, package)
+            # package = 'bootflash:' + pkg
+            # remove_exist_image(self.ctx, package)
 
         # subpackage: need to expand the consolidated image to the installed folder
         if mode == 'subpackage':
@@ -162,6 +162,9 @@ class Plugin(CSMPlugin):
                 self.ctx.warning('System image not found in show version: {}'.format(output))
 
         if not activate_success:
+            # Refresh package information
+            get_package(self.ctx)
+            update_device_info_udi(self.ctx)
             self.ctx.error('Activte image {} has failed'.format(pkg))
 
         if mode == 'issu':

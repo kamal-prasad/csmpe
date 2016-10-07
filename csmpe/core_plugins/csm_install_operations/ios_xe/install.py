@@ -135,12 +135,12 @@ def install_activate_write_memory(ctx, cmd, hostname):
 
     events = [Host_prompt, Overwrite_warning, Build_config]
     transitions = [
-        (Overwrite_warning, [0], -1, send_newline, 600),
-        (Build_config, [0], -1, None, 600),
-        (Host_prompt, [1], -1, None, 600),
+        (Overwrite_warning, [0], 1, send_newline, 1200),
+        (Build_config, [0, 1], 2, None, 1200),
+        (Host_prompt, [0, 1, 2], -1, None, 1200),
     ]
 
-    if not ctx.run_fsm("write memory", cmd, events, transitions, timeout=600):
+    if not ctx.run_fsm("write memory", cmd, events, transitions, timeout=1200):
         ctx.error("Failed: {}".format(cmd))
 
 
