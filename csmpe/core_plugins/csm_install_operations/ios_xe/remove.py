@@ -25,7 +25,7 @@
 # =============================================================================
 
 from csmpe.plugins import CSMPlugin
-from csmpe.core_plugins.csm_get_software_packages.ios_xe.plugin import get_package
+from csmpe.core_plugins.csm_get_inventory.ios_xe.plugin import get_package, get_inventory
 from utils import remove_exist_image
 from utils import number_of_rsp
 
@@ -66,8 +66,9 @@ class Plugin(CSMPlugin):
                     break
         else:
             self.ctx.info("Package(s) Removed Successfully")
-            # Refresh package information
+            # Refresh package and inventory information
             get_package(self.ctx)
+            get_inventory(self.ctx)
             return
 
         self.ctx.error("Package(s) Removal Failed")

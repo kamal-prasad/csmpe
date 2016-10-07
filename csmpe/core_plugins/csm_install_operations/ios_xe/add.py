@@ -27,7 +27,7 @@
 import re
 from csmpe.plugins import CSMPlugin
 from utils import install_add_remove
-from csmpe.core_plugins.csm_get_software_packages.ios_xe.plugin import get_package
+from csmpe.core_plugins.csm_get_inventory.ios_xe.plugin import get_package, get_inventory
 
 
 class Plugin(CSMPlugin):
@@ -67,5 +67,6 @@ class Plugin(CSMPlugin):
 
         self.ctx.info("Package(s) Added Successfully")
 
-        # Refresh package information
+        # Refresh package and inventory information
         get_package(self.ctx)
+        get_inventory(self.ctx)

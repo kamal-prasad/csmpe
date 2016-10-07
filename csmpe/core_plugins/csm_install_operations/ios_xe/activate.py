@@ -34,7 +34,7 @@ from install import expand_subpkgs
 from install import install_activate_reload
 from install import install_activate_write_memory
 from install import install_activate_issu
-from csmpe.core_plugins.csm_get_software_packages.ios_xe.plugin import get_package
+from csmpe.core_plugins.csm_get_inventory.ios_xe.plugin import get_package, get_inventory
 from csmpe.core_plugins.csm_install_operations.utils import update_device_info_udi
 from utils import remove_exist_image
 from utils import xe_show_platform
@@ -120,8 +120,9 @@ class Plugin(CSMPlugin):
 
         self.ctx.info("Activate package done")
 
-        # Refresh package information
+        # Refresh package and inventory information
         get_package(self.ctx)
+        get_inventory(self.ctx)
         update_device_info_udi(self.ctx)
 
         # Verify the version

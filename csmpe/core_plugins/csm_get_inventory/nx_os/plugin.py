@@ -29,26 +29,14 @@ from csmpe.plugins import CSMPlugin
 
 class Plugin(CSMPlugin):
     """This plugin retrieves software information from the device."""
-    name = "Get Software Packages Plugin"
-    platforms = {'ASR9K', 'CRS'}
-    phases = {'Get-Software-Packages'}
-    os = {'XR'}
+    name = "Get Inventory Plugin"
+    platforms = {'N9K'}
+    phases = {'Get-Inventory'}
 
     def run(self):
         get_package(self.ctx)
-        get_inventory(self.ctx)
-
-
-def get_inventory(ctx):
-    # saved the output of "admin show inventory"
-    output = ctx.send("admin show inventory")
-    ctx.save_data("inventory", output)
 
 
 def get_package(ctx):
-    ctx.save_data("cli_show_install_inactive",
-                  ctx.send("admin show install inactive summary"))
-    ctx.save_data("cli_show_install_active",
-                  ctx.send("admin show install active summary"))
-    ctx.save_data("cli_show_install_committed",
-                  ctx.send("admin show install committed summary"))
+    ctx.save_data("cli_show_install_committed", ctx.send('sh install packages | grep lib32_n9000'))
+    ctx.save_data("cli_show_install_inactive", ctx.send('sh install inactive'))

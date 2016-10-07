@@ -30,6 +30,7 @@ import json
 
 from csmpe.plugins import CSMPlugin
 from migration_lib import SUPPORTED_HW_JSON, log_and_post_status, parse_admin_show_platform
+from csmpe.core_plugins.csm_get_inventory.ios_xr.plugin import get_package, get_inventory
 
 
 ROUTEPROCESSOR_RE = '\d+/RS??P\d+/CPU\d+'
@@ -209,5 +210,9 @@ class Plugin(CSMPlugin):
                                                                             override_hw_req)
         self.ctx.save_data("fpd_relevant_nodes", fpd_relevant_nodes)
         log_and_post_status(self.ctx, "Hardware audit completed successfully.")
+
+        # Refresh package and inventory information
+        get_package(self.ctx)
+        get_inventory(self.ctx)
 
         return True

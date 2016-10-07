@@ -41,7 +41,7 @@ from add import Plugin as InstallAddPlugin
 from activate import Plugin as InstallActivatePlugin
 from commit import Plugin as InstallCommitPlugin
 from migration_lib import log_and_post_status
-from csmpe.core_plugins.csm_get_software_packages.ios_xr.plugin import get_package, get_inventory
+from csmpe.core_plugins.csm_get_inventory.ios_xr.plugin import get_package, get_inventory
 
 MINIMUM_RELEASE_VERSION_FOR_MIGRATION = "5.3.3"
 RELEASE_VERSION_DOES_NOT_NEED_FPD_SMU = "6.1.1"

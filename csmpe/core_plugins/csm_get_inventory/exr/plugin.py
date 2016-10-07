@@ -29,9 +29,9 @@ from csmpe.plugins import CSMPlugin
 
 class Plugin(CSMPlugin):
     """This plugin retrieves software information from the device."""
-    name = "Get Software Packages Plugin"
+    name = "Get Inventory Plugin"
     platforms = {'ASR9K', 'NCS1K', 'NCS5K', 'NCS5500', 'NCS6K'}
-    phases = {'Get-Software-Packages'}
+    phases = {'Get-Inventory'}
     os = {'eXR'}
 
     def run(self):
@@ -42,7 +42,7 @@ class Plugin(CSMPlugin):
 def get_inventory(ctx):
     # Save the output of "show inventory" in admin mode
     output = get_output_in_admin_mode(ctx, "show inventory")
-    ctx.save_data("inventory", output)
+    ctx.save_data("cli_show_inventory", output)
 
 
 def get_package(ctx):
