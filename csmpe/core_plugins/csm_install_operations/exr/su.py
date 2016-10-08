@@ -193,6 +193,13 @@ class Plugin(CSMPlugin):
 	     return
 	self.ctx.info("Activate package(s) passed")
 	self.ctx.post_status("Activate package(s) passed")
+	cmd = "reload location all"
+	result = self.execute_cmd(cmd)
+	if result:
+	     self.ctx.info("Reload happened Successfully")
+	else:
+	     self.ctx.info("Failed to reload ")
+	     return
 	cmd = "install commit"
 	result = self.execute_cmd(cmd)
 	if result:

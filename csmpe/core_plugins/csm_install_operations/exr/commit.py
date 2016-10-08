@@ -29,7 +29,7 @@ import re
 
 from csmpe.plugins import CSMPlugin
 from install import watch_operation, log_install_errors
-from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
+from csmpe.core_plugins.csm_get_inventory.exr.plugin import get_package, get_inventory
 
 
 class Plugin(CSMPlugin):
@@ -80,5 +80,6 @@ class Plugin(CSMPlugin):
         elif re.search(success_oper, output):
             self.ctx.info("Operation {} finished successfully.".format(op_id))
 
-        # Refresh package information
+        # Refresh package and inventory information
         get_package(self.ctx)
+        get_inventory(self.ctx)

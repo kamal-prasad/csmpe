@@ -34,7 +34,7 @@ from install import expand_subpkgs
 from install import install_activate_reload
 from install import install_activate_write_memory
 from install import install_activate_issu
-from csmpe.core_plugins.csm_get_software_packages.ios_xe.plugin import get_package
+from csmpe.core_plugins.csm_get_inventory.ios_xe.plugin import get_package, get_inventory
 from csmpe.core_plugins.csm_install_operations.utils import update_device_info_udi
 from utils import remove_exist_image
 from utils import xe_show_platform
@@ -73,8 +73,8 @@ class Plugin(CSMPlugin):
         if mode == 'issu':
             cmd = 'copy bootflash:' + pkg + ' ' + folder + '/' + pkg
             install_add_remove(self.ctx, cmd)
-            package = 'bootflash:' + pkg
-            remove_exist_image(self.ctx, package)
+            # package = 'bootflash:' + pkg
+            # remove_exist_image(self.ctx, package)
 
         # subpackage: need to expand the consolidated image to the installed folder
         if mode == 'subpackage':
@@ -120,8 +120,9 @@ class Plugin(CSMPlugin):
 
         self.ctx.info("Activate package done")
 
-        # Refresh package information
+        # Refresh package and inventory information
         get_package(self.ctx)
+        get_inventory(self.ctx)
         update_device_info_udi(self.ctx)
 
         # Verify the version
@@ -161,6 +162,9 @@ class Plugin(CSMPlugin):
                 self.ctx.warning('System image not found in show version: {}'.format(output))
 
         if not activate_success:
+            # Refresh package information
+            get_package(self.ctx)
+            update_device_info_udi(self.ctx)
             self.ctx.error('Activte image {} has failed'.format(pkg))
 
         if mode == 'issu':

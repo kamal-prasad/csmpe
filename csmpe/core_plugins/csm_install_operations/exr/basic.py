@@ -111,14 +111,13 @@ class Plugin(CSMPlugin):
     def show_cmd(self, cmd):
 	result = self.ctx.send(cmd, timeout=120)
 
-    def generic_show(self, cmd):
-	show_cmd("show install active")
-	show_cmd("show install inactive")
-	show_cmd("show install repository all")
-	show_cmd("show install log")
-	show_cmd("show install log detail")
-	show_cmd("show install log reverse")
-	show_cmd("show install superceded")
+    def generic_show(self):
+	self.show_cmd("show install active")
+	self.show_cmd("show install inactive")
+	self.show_cmd("show install repository all")
+	self.show_cmd("show install log")
+	self.show_cmd("show install log detail")
+	self.show_cmd("show install log reverse")
 
     def verify_pkgs(self):
 	cmd = "install verify packages"
@@ -254,6 +253,7 @@ class Plugin(CSMPlugin):
 	self.ctx.post_status("Deactivate package(s) passed")
 	if not self.verify_pkgs():
 	    return
+	self.ctx.send("install commit", timeout=120)
 	cmd = "install remove id {} ".format(pkg_id)
 	result = self.execute_cmd(cmd)
 	if result:

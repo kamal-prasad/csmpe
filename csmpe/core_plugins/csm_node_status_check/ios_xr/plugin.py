@@ -55,7 +55,7 @@ class Plugin(CSMPlugin):
                     self.ctx.warning("{}={}: {}".format(key, value, "Not in valid state for upgrade"))
                     break
         else:
-            self.ctx.save_data("inventory", inventory)
+            self.ctx.save_data("node_status", inventory)
             self.ctx.info("All nodes in valid state for upgrade")
             return True
 

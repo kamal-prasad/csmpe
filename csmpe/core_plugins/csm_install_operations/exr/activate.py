@@ -30,7 +30,7 @@ from csmpe.plugins import CSMPlugin
 from install import install_activate_deactivate
 from install import send_admin_cmd
 from install import check_ncs6k_release
-from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
+from csmpe.core_plugins.csm_get_inventory.exr.plugin import get_package, get_inventory
 from csmpe.core_plugins.csm_install_operations.utils import update_device_info_udi
 
 
@@ -125,7 +125,8 @@ class Plugin(CSMPlugin):
 
         self.ctx.info("Activate package(s) done")
 
-        # Refresh package information
+        # Refresh package and inventory information
         get_package(self.ctx)
+        get_inventory(self.ctx)
 
         update_device_info_udi(self.ctx)

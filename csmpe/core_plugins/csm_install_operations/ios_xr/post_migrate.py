@@ -32,7 +32,7 @@ from csmpe.plugins import CSMPlugin
 from csmpe.context import PluginError
 from migration_lib import wait_for_final_band, log_and_post_status
 from csmpe.core_plugins.csm_custom_commands_capture.plugin import Plugin as CmdCapturePlugin
-from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
+from csmpe.core_plugins.csm_get_inventory.exr.plugin import get_package, get_inventory
 from pre_migrate import FINAL_CAL_CONFIG
 
 TIMEOUT_FOR_COPY_CONFIG = 3600
@@ -244,5 +244,6 @@ class Plugin(CSMPlugin):
             log_and_post_status(self.ctx,
                                 "Failed to capture 'show platform' - ({}): {}".format(e.errno, e.strerror))
 
-        # Refresh package information
+        # Refresh package and inventory information
         get_package(self.ctx)
+        get_inventory(self.ctx)

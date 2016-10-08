@@ -28,7 +28,7 @@ from package_lib import SoftwarePackage
 from csmpe.plugins import CSMPlugin
 from install import observe_install_add_remove
 from install import send_admin_cmd
-from csmpe.core_plugins.csm_get_software_packages.exr.plugin import get_package
+from csmpe.core_plugins.csm_get_inventory.exr.plugin import get_package, get_inventory
 
 
 class Plugin(CSMPlugin):
@@ -68,5 +68,6 @@ class Plugin(CSMPlugin):
 
         self.ctx.info("Package(s) Removed Successfully")
 
-        # Refresh package information
+        # Refresh package and inventory information
         get_package(self.ctx)
+        get_inventory(self.ctx)
