@@ -58,7 +58,7 @@ class CSMPluginManager(object):
 
         self._phase = None
         self._name = None
-
+        self._vm = "xr"
         self.load(invoke_on_load=invoke_on_load)
 
     def load(self, invoke_on_load=True):

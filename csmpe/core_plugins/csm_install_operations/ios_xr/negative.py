@@ -1,3 +1,4 @@
+# coding=utf-8
 # =============================================================================
 #
 # Copyright (c) 2016, Cisco Systems
@@ -7,8 +8,6 @@
 # modification, are permitted provided that the following conditions are met:
 #
 # Redistributions of source code must retain the above copyright notice,
-# this list of conditions and the following disclaimer.
-# Redistributions in binary form must reproduce the above copyright notice,
 # this list of conditions and the following disclaimer in the documentation
 # and/or other materials provided with the distribution.
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -27,17 +26,17 @@
 from csmpe.plugins import CSMPlugin
 from install import watch_operation
 from install import wait_for_reload
+from csmpe.context import PluginError
 from time import sleep
 import re
 
 
 class Plugin(CSMPlugin):
-    """This plugin tests basic install operations on ios prompt."""
-    name = "Install basic Plugin"
+    """This plugin tests invalid install operations on ios prompt."""
+    name = "Install negative Plugin"
     platforms = {'ASR9K', 'CRS'}
     phases = {'Add'}
     os = {'XR'}
-
     op_id = 0
     fsm_result = False
 
@@ -64,6 +63,7 @@ class Plugin(CSMPlugin):
         return True
 
     def handle_aborted(self, fsm_ctx):
+        self.ctx.warning("action has aborted")
         self.fsm_result = False
         return False
 
@@ -73,18 +73,20 @@ class Plugin(CSMPlugin):
         return True
 
     def handle_reload_cmd(self, fsm_ctx):
-        self.ctx.send("yes", timeout=30)
+
         self.op_id = self.get_op_id(fsm_ctx.ctrl.before)
         if self.op_id == -1:
             self.fsm_result = False
             return False
-
         sleep(60)
         try:
             watch_operation(self.ctx, self.op_id)
         except self.ctx.CommandTimeoutError:
             # The device already started the reload
             pass
+        self.execute_cmd("cflow dump")
+        sleep(120)
+        self.execute_cmd("cflow clear")
         success = wait_for_reload(self.ctx)
         if not success:
             self.ctx.error("Reload or boot failure")
@@ -114,15 +116,14 @@ class Plugin(CSMPlugin):
             (PROCEED_PROMPT, [0], -1, self.handle_confirm, 100),
             (ABORTED, [0], -1, self.handle_aborted, 100),
         ]
-
-        if not self.ctx.run_fsm("basic cmd", cmd, events, transitions, timeout=100):
+        if not self.ctx.run_fsm("negative test", cmd, events, transitions, timeout=100):
             self.ctx.error("Failed: {}".format(cmd))
         return self.fsm_result
 
     def show_cmd(self, cmd):
         result = self.ctx.send(cmd, timeout=120)
         if not result:
-            self.ctx.info("could not send show cmd")
+            self.ctx.info("show cmd failed")
 
     def generic_show(self):
         self.show_cmd("show install active")
@@ -167,12 +168,6 @@ class Plugin(CSMPlugin):
 
         has_tar = False
 
-#        is_tp_smu = False
-#        for pkg in packages:
-#            if "CSCke" in pkg:
-#                is_tp_smu = True
-#                break
-
         if self.ctx.family == 'NCS6K':
             s_packages = " ".join([package for package in packages
                                    if ('iso' in package or 'pkg' in package or 'smu' in package or 'tar' in package)])
@@ -187,6 +182,13 @@ class Plugin(CSMPlugin):
         admin_mode = self.ctx.admin_mode
         if admin_mode:
             self.ctx.send("admin", timeout=30)
+        parent_pkg = self.ctx.parent_pkg
+        cmd = "install add source {} {} ".format(server_repository_url, parent_pkg)
+        result = self.execute_cmd(cmd)
+        if not result:
+            self.ctx.info("failed to add parent pkg")
+            return
+        parent_id = self.op_id
 
         cmd = "install add source {} {} ".format(server_repository_url, s_packages)
         result = self.execute_cmd(cmd)
@@ -202,57 +204,84 @@ class Plugin(CSMPlugin):
             return
         self.ctx.info("Add package(s) passed")
         self.ctx.post_status("Add package(s) passed")
-        self.generic_show()
+        # adding package before parent will fail
         cmd = "install prepare id {} ".format(pkg_id)
-        result = self.execute_cmd(cmd)
-        result = self.execute_cmd("install prepare clean")
-        cmd = "install prepare id {} ".format(pkg_id)
+        try:
+            result = self.execute_cmd(cmd)
+        except PluginError:
+            err_str = "Validated child cannot be prepared before parent"
+            self.ctx.info(err_str)
+            self.ctx.post_status(err_str)
+            self.ctx._connection.reconnect()
+            pass
+        else:
+            err_str = "Failed: Validate child cannot be prepared before parent"
+            self.ctx.info(err_str)
+            self.ctx.post_status(err_str)
+
+        self.execute_cmd("install prepare clean")
+        cmd = "install prepare id {} {}".format(parent_id, pkg_id)
         result = self.execute_cmd(cmd)
         if result:
-            self.ctx.info("Package(s) Prepared Successfully")
+            self.ctx.post_status("Prepared packages successfully")
         else:
             self.ctx.info("Failed to prepared packages")
+            self.ctx.post_status("Failed to prepared packages")
             return
         result = self.execute_cmd("install activate")
-        result = self.execute_cmd("install commit")
-        self.commit_verify()
-        cmd = "install deactivate id {} ".format(pkg_id)
-        result = self.execute_cmd(cmd)
-        if result:
-            self.ctx.info("Package(s) deactivated  Successfully")
-        else:
-            self.ctx.info("Failed to deactivate packages")
-            return
-        if not self.verify_pkgs():
-            return
-        result = self.execute_cmd("install commit")
-        self.commit_verify()
-        cmd = "install activate id {} ".format(pkg_id)
-        result = self.execute_cmd(cmd)
         if result:
             self.ctx.info("Package(s) activated Successfully")
+            self.ctx.post_status("Package(s) activated Successfully")
         else:
-            self.ctx.info("Failed to activated packages")
+            self.ctx.info("Failed to activate packages")
             return
-        self.ctx.info("Activate package(s) passed")
-        self.ctx.post_status("Activate package(s) passed")
-        if not self.verify_pkgs():
-            return
-        self.generic_show()
+        cmd = "install remove id {} ".format(pkg_id)
+        # removing package which is active will fail
+        try:
+            result = self.execute_cmd(cmd)
+        except:
+            err_str = "Validated active child package cannot be removed"
+            self.ctx.info(err_str)
+            self.ctx.post_status(err_str)
+            self.ctx._connection.reconnect()
+            pass
+        else:
+            err_str = "Failed: Validate active child package cannot be removed"
+            self.ctx.info(err_str)
+            self.ctx.post_status(err_str)
+        cmd = "install remove id {} ".format(parent_id)
+        try:
+            result = self.execute_cmd(cmd)
+        except:
+            err_str = "Validated active parent package cannot be removed"
+            self.ctx.info(err_str)
+            self.ctx.post_status(err_str)
+            self.ctx._connection.reconnect()
+            pass
+        else:
+            err_str = "Failed: Validate active parent package cannot be removed"
+            self.ctx.info(err_str)
+            self.ctx.post_status(err_str)
+
+        self.execute_cmd("install commit")
         result = self.execute_cmd("install commit")
         self.commit_verify()
-        cmd = "install deactivate id {} ".format(pkg_id)
+
+        cmd = "install deactivate id {} {} ".format(parent_id, pkg_id)
         result = self.execute_cmd(cmd)
         if result:
             self.ctx.info("Package(s) deactivated Successfully")
+            self.ctx.post_status("Package(s) deactivated Successfully")
         else:
             self.ctx.info("Failed to deactivate packages")
+            self.ctx.post_status("Failed to deactivate packages")
             return
 
         self.ctx.info("Deactivate package(s) passed")
         self.ctx.post_status("Deactivate package(s) passed")
         result = self.execute_cmd("install commit")
-        cmd = "install remove id {} ".format(pkg_id)
+        cmd = "install remove id {} ".format(parent_id)
+        self.ctx.post_status(cmd)
         result = self.execute_cmd(cmd)
         if result:
             self.ctx.info("Package(s) remove Successfully")
@@ -261,7 +290,6 @@ class Plugin(CSMPlugin):
             return
         self.ctx.info("Remove package(s) passed")
         self.ctx.post_status("Remove package(s) passed")
-        self.generic_show()
         self.execute_cmd("install commit")
         if admin_mode:
             self.ctx.send("exit", timeout=30)

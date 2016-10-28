@@ -27,7 +27,6 @@
 from csmpe.plugins import CSMPlugin
 from csmpe.context import PluginError
 from install import watch_operation
-from install import check_ncs6k_release
 from install import wait_for_reload
 import re
 
@@ -35,9 +34,9 @@ import re
 class Plugin(CSMPlugin):
     """This plugin tests ISSU operation on ios prompt."""
     name = "Install issu Plugin"
-    platforms = {'ASR9K', 'NCS1K', 'NCS5K', 'NCS5500', 'NCS6K'}
+    platforms = {'ASR900'}
     phases = {'Add'}
-    os = {'eXR'}
+    os = {'XE'}
     op_id = 0
     fsm_result = False
 
@@ -178,8 +177,6 @@ class Plugin(CSMPlugin):
         return result
 
     def run(self):
-        check_ncs6k_release(self.ctx)
-
         server_repository_url = self.ctx.server_repository_url
         if server_repository_url is None:
             self.ctx.error("No repository provided")

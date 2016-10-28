@@ -28,8 +28,9 @@ from csmpe.plugins import CSMPlugin
 from install import watch_operation
 from install import check_ncs6k_release
 from install import wait_for_reload
-from os import listdir
+from time import sleep
 import re
+
 
 class Plugin(CSMPlugin):
     """This plugin tests basic install operations on ios prompt."""
@@ -41,113 +42,119 @@ class Plugin(CSMPlugin):
     fsm_result = False
 
     def get_op_id(self, output):
-	result = re.search('Install operation (\d+)', output)
-	if result:
-	    return result.group(1)
-	return -1
+        result = re.search('Install operation (\d+)', output)
+        if result:
+            return result.group(1)
+        return -1
 
     def handle_non_reload_cmd(self, fsm_ctx):
 
-	self.op_id = self.get_op_id(fsm_ctx.ctrl.before)
-	if self.op_id == -1:
-	    self.fsm_result = False
+        self.op_id = self.get_op_id(fsm_ctx.ctrl.before)
+        if self.op_id == -1:
+            self.fsm_result = False
             return False
-	watch_operation(self.ctx, self.op_id)
-	self.fsm_result = True
-	return True
+        sleep(60)
+        watch_operation(self.ctx, self.op_id)
+        self.fsm_result = True
+        return True
+
+    def handle_confirm(self, fsm_ctx):
+        self.ctx.send("yes", timeout=30)
+        self.fsm_result = True
+        return True
 
     def handle_aborted(self, fsm_ctx):
-	self.fsm_result = False
-	return False
+        self.fsm_result = False
+        return False
 
     def no_impact_warning(self, fsm_ctx):
-   	self.ctx.warning("This was a NO IMPACT OPERATION. Packages are already active on device.")
-	self.fsm_result = True
-	return True
+        self.ctx.warning("This was a NO IMPACT OPERATION. Packages are already active on device.")
+        self.fsm_result = True
+        return True
 
     def handle_reload_cmd(self, fsm_ctx):
-
-	self.op_id = self.get_op_id(fsm_ctx.ctrl.before)
-	if self.op_id == -1:
-	    self.fsm_result = False
+        self.ctx.send("yes", timeout=30)
+        self.op_id = self.get_op_id(fsm_ctx.ctrl.before)
+        if self.op_id == -1:
+            self.fsm_result = False
             return False
 
-	try:
-	    watch_operation(self.ctx, self.op_id)
-	except self.ctx.CommandTimeoutError:
-        # The device already started the reload
+        sleep(60)
+        try:
+            watch_operation(self.ctx, self.op_id)
+        except self.ctx.CommandTimeoutError:
+            # The device already started the reload
             pass
+        success = wait_for_reload(self.ctx)
+        if not success:
+            self.ctx.error("Reload or boot failure")
+            self.fsm_result = False
+            return
 
-	success = wait_for_reload(self.ctx)
-	if not success:
-	    self.ctx.error("Reload or boot failure")
-	    self.fsm_result = False
-	    return
-
-	self.ctx.info("Operation {} finished successfully".format(self.op_id))
-	self.fsm_result = True
-	return True
+        self.ctx.info("Operation {} finished successfully".format(self.op_id))
+        self.fsm_result = True
+        return True
 
     def execute_cmd(self, cmd):
-	ABORTED = re.compile("aborted")
-	CONTINUE_IN_BACKGROUND = re.compile("Install operation will continue in the background")
-	REBOOT_PROMPT = re.compile("This install operation will (?:reboot|reload) the sdr, continue")
-	RUN_PROMPT = re.compile("#")
-	NO_IMPACT = re.compile("NO IMPACT OPERATION")
+        ABORTED = re.compile("aborted")
+        CONTINUE_IN_BACKGROUND = re.compile("Install operation will continue in the background")
+        REBOOT_PROMPT = re.compile("This install operation will (?:reboot|reload) the sdr, continue")
+        RUN_PROMPT = re.compile("#")
+        DONE_PROMPT = re.compile("DONE")
+        PROCEED_PROMPT = re.compile("Do you want to proceed")
+        NO_IMPACT = re.compile("NO IMPACT OPERATION")
 
-	events = [CONTINUE_IN_BACKGROUND, REBOOT_PROMPT, ABORTED, NO_IMPACT, RUN_PROMPT]
-	transitions = [
+        events = [CONTINUE_IN_BACKGROUND, REBOOT_PROMPT, DONE_PROMPT, PROCEED_PROMPT, ABORTED, NO_IMPACT, RUN_PROMPT]
+        transitions = [
             (CONTINUE_IN_BACKGROUND, [0], -1, self.handle_non_reload_cmd, 100),
             (REBOOT_PROMPT, [0], -1, self.handle_reload_cmd, 100),
             (NO_IMPACT, [0], -1, self.no_impact_warning, 20),
             (RUN_PROMPT, [0], -1, self.handle_non_reload_cmd, 100),
+            (DONE_PROMPT, [0], -1, self.handle_non_reload_cmd, 100),
+            (PROCEED_PROMPT, [0], -1, self.handle_confirm, 100),
             (ABORTED, [0], -1, self.handle_aborted, 100),
-	]
+        ]
 
-	if not self.ctx.run_fsm("ios xr cmd", cmd, events, transitions, timeout=100):
-	    self.ctx.error("Failed: {}".format(cmd))
-	return self.fsm_result
+        if not self.ctx.run_fsm("basic cmd", cmd, events, transitions, timeout=100):
+            self.ctx.error("Failed: {}".format(cmd))
+        return self.fsm_result
 
     def show_cmd(self, cmd):
-	result = self.ctx.send(cmd, timeout=120)
+        result = self.ctx.send(cmd, timeout=120)
+        if not result:
+            self.ctx.info("could not send show cmd")
 
     def generic_show(self):
-	self.show_cmd("show install active")
-	self.show_cmd("show install inactive")
-	self.show_cmd("show install repository all")
-	self.show_cmd("show install log")
-	self.show_cmd("show install log detail")
-	self.show_cmd("show install log reverse")
+        self.show_cmd("show install active")
+        self.show_cmd("show install inactive")
+        self.show_cmd("show install repository all")
 
     def verify_pkgs(self):
-	cmd = "install verify packages"
-	result = self.execute_cmd(cmd)
-	if result:
-	    return True
-	self.ctx.error("install verification failed")
-	return False
-	
+        result = self.execute_cmd("install verify packages")
+        if result:
+            return True
+        self.ctx.error("install verification failed")
+        return False
+
     def commit_verify(self):
-	num_active = 0
-	num_committed = 0
-	result = self.ctx.send("show install active", timeout=120)
-	for line in result:
+        num_active = 0
+        num_committed = 0
+        result = self.ctx.send("show install active", timeout=120)
+        for line in result:
             if re.search(r"  Active Packages: ", line):
-		num_active = line[20:]
-	result = self.execute_cmd("install commit")
-	if not result:
-	    return False
-	result = self.ctx.send("show install committed", timeout=120)
-	for line in result:
+                num_active = line[20:]
+        result = self.execute_cmd("install commit")
+        if not result:
+            return False
+        result = self.ctx.send("show install committed", timeout=120)
+        for line in result:
             if re.search(r"  Commmitted Packages: ", line):
-		num_committed = line[22:]
-	if num_active != num_committed:
-	    return False
-	return True
+                num_committed = line[22:]
+        if num_active != num_committed:
+            return False
+        return True
 
     def run(self):
-
-	self.ctx.info("test1.py called")
         check_ncs6k_release(self.ctx)
         server_repository_url = self.ctx.server_repository_url
         if server_repository_url is None:
@@ -161,11 +168,11 @@ class Plugin(CSMPlugin):
 
         has_tar = False
 
-	is_tp_smu = False
-	for pkg in packages:
-	    if "CSCke" in pkg:
-		is_tp_smu = True
-		break
+#        is_tp_smu = False
+#        for pkg in packages:
+#            if "CSCke" in pkg:
+#                is_tp_smu = True
+#                break
 
         if self.ctx.family == 'NCS6K':
             s_packages = " ".join([package for package in packages
@@ -176,92 +183,88 @@ class Plugin(CSMPlugin):
 
         if 'tar' in s_packages:
             has_tar = True
-
-
         if not s_packages:
             self.ctx.error("None of the selected package(s) has an acceptable file extension.")
+        admin_mode = self.ctx.admin_mode
+        if admin_mode:
+            self.ctx.send("admin", timeout=30)
+
         cmd = "install add source {} {} ".format(server_repository_url, s_packages)
-	result = self.execute_cmd(cmd)
-	if result:
-	     pkg_id = self.op_id
-	     if has_tar is True:
-	         self.ctx.operation_id = self.op_id
-	         self.ctx.info("The operation {} stored".format(self.op_id))
-	     self.ctx.info("Package(s) Added Successfully")
-	else:
-	     self.ctx.info("Failed to add packages")
-	     self.ctx.error(result)
-	     return
-	self.ctx.info("Add package(s) passed")
-	self.ctx.post_status("Add package(s) passed")
-	self.generic_show()
+        result = self.execute_cmd(cmd)
+        if result:
+            pkg_id = self.op_id
+            if has_tar is True:
+                self.ctx.operation_id = self.op_id
+                self.ctx.info("The operation {} stored".format(self.op_id))
+            self.ctx.info("Package(s) Added Successfully")
+        else:
+            self.ctx.info("Failed to add packages")
+            self.ctx.error(result)
+            return
+        self.ctx.info("Add package(s) passed")
+        self.ctx.post_status("Add package(s) passed")
+        self.generic_show()
+        cmd = "install prepare id {} ".format(pkg_id)
+        result = self.execute_cmd(cmd)
+        result = self.execute_cmd("install prepare clean")
+        cmd = "install prepare id {} ".format(pkg_id)
+        result = self.execute_cmd(cmd)
+        if result:
+            self.ctx.info("Package(s) Prepared Successfully")
+        else:
+            self.ctx.info("Failed to prepared packages")
+            return
+        result = self.execute_cmd("install activate")
+        result = self.execute_cmd("install commit")
+        self.commit_verify()
+        cmd = "install deactivate id {} ".format(pkg_id)
+        result = self.execute_cmd(cmd)
+        if result:
+            self.ctx.info("Package(s) deactivated  Successfully")
+        else:
+            self.ctx.info("Failed to deactivate packages")
+            return
+        if not self.verify_pkgs():
+            return
+        result = self.execute_cmd("install commit")
+        self.commit_verify()
+        cmd = "install activate id {} ".format(pkg_id)
+        result = self.execute_cmd(cmd)
+        if result:
+            self.ctx.info("Package(s) activated Successfully")
+        else:
+            self.ctx.info("Failed to activated packages")
+            return
+        self.ctx.info("Activate package(s) passed")
+        self.ctx.post_status("Activate package(s) passed")
+        if not self.verify_pkgs():
+            return
+        self.generic_show()
+        result = self.execute_cmd("install commit")
+        self.commit_verify()
+        cmd = "install deactivate id {} ".format(pkg_id)
+        result = self.execute_cmd(cmd)
+        if result:
+            self.ctx.info("Package(s) deactivated Successfully")
+        else:
+            self.ctx.info("Failed to deactivate packages")
+            return
 
-	cmd = "install prepare id {} ".format(pkg_id)
-	result = self.execute_cmd(cmd)
-	if result:
-	     self.ctx.info("Package(s) Prepared Successfully")
-	else:
-	     self.ctx.info("Failed to prepared packages")
-	     return
-	cmd = "install prepare clean "
-	result = self.execute_cmd(cmd)
-	if result:
-	     self.ctx.info("Package(s) Prepare  Cleaned Successfully")
-	else:
-	     self.ctx.info("Failed to clean prepared packages")
-	     return
-	if not self.verify_pkgs():
-	    return
-	cmd = "install prepare id {} ".format(pkg_id)
-	result = self.execute_cmd(cmd)
-	if result:
-	     self.ctx.info("Package(s) Prepared Successfully")
-	else:
-	     self.ctx.info("Failed to prepared packages")
-	     return
-	self.ctx.info("prepare package(s) passed")
-	self.ctx.post_status("prepare package(s) passed")
-	self.generic_show()
-	cmd = "install activate"
-	result = self.execute_cmd(cmd)
-	if result:
-	     self.ctx.info("Package(s) Activated Successfully")
-	else:
-	     self.ctx.info("Failed to activate packages")
-	     return
-	
-	self.ctx.info("Activate package(s) passed")
-	self.ctx.post_status("Activate package(s) passed")
-	if not self.verify_pkgs():
-	    return
-	# tp smu cannot be deactivated
-	if is_tp_smu:
-	    return
-	self.generic_show()
-
-	self.commit_verify()
-	cmd = "install deactivate id {} ".format(pkg_id)
-	result = self.execute_cmd(cmd)
-	if result:
-	     self.ctx.info("Package(s) deactivated Successfully")
-	else:
-	     self.ctx.info("Failed to deactivate packages")
-	     return
-
-	self.commit_verify()
-	self.ctx.info("Deactivate package(s) passed")
-	self.ctx.post_status("Deactivate package(s) passed")
-	if not self.verify_pkgs():
-	    return
-	self.ctx.send("install commit", timeout=120)
-	cmd = "install remove id {} ".format(pkg_id)
-	result = self.execute_cmd(cmd)
-	if result:
-	     self.ctx.info("Package(s) remove Successfully")
-	else:
-	     self.ctx.info("Failed to remove packages")
-	     return
-	self.ctx.info("Remove package(s) passed")
-	self.ctx.post_status("Remove package(s) passed")
-	self.generic_show()
-	return True
+        self.ctx.info("Deactivate package(s) passed")
+        self.ctx.post_status("Deactivate package(s) passed")
+        result = self.execute_cmd("install commit")
+        cmd = "install remove id {} ".format(pkg_id)
+        result = self.execute_cmd(cmd)
+        if result:
+            self.ctx.info("Package(s) remove Successfully")
+        else:
+            self.ctx.info("Failed to remove packages")
+            return
+        self.ctx.info("Remove package(s) passed")
+        self.ctx.post_status("Remove package(s) passed")
+        self.generic_show()
+        self.execute_cmd("install commit")
+        if admin_mode:
+            self.ctx.send("exit", timeout=30)
+        self.ctx.send("exit", timeout=30)
+        return True

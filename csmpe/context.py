@@ -46,6 +46,8 @@ class InstallContext(object):
 
     def __init__(self):
         self.hostname = "Hostname"
+        self.admin_mode = False
+        self.parent_pkg = ""
 
     def post_status(self, message):
         print("[CSM Status] {}".format(message))
@@ -68,7 +70,7 @@ class Host(object):
     pass
 
 
-@delegate("_csm", ("post_status",), ("custom_commands", "success", "operation_id", "server_repository_url",
+@delegate("_csm", ("post_status",), ("custom_commands", "success", "operation_id", "server_repository_url", "admin_mode", "parent_pkg",
                                      "software_packages", "hostname", "log_directory", "migration_directory",
                                      "get_server", "get_host"))
 @delegate("_connection", ("connect", "disconnect", "reconnect", "discovery", "send", "run_fsm", "reload"),
@@ -80,6 +82,9 @@ class PluginContext(object):
     def __init__(self, csm=None):
         self._csm = csm
         self.current_plugin = ""
+        self.admin_mode = csm.admin_mode
+        self.parent_pkg = csm.parent_pkg
+
         if csm is not None:
             self._connection = condoor.Connection(
                 self._csm.hostname,
